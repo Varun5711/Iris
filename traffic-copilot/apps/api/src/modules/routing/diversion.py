@@ -73,19 +73,43 @@ async def compute_diversion_routes(
     # Ensure the weight attribute exists on all edges.
     _ensure_weight_attr(work_graph)
 
+    # A* heuristic: straight-line distance (haversine approximation).
+    # Guides search toward destination, much faster than blind Dijkstra
+    # on large city graphs (67k+ nodes).
+    dest_x = work_graph.nodes[destination_node].get("x", 0.0)
+    dest_y = work_graph.nodes[destination_node].get("y", 0.0)
+
+    def _heuristic(u: int, v: int) -> float:  # noqa: ARG001 (v = destination, unused)
+        n = work_graph.nodes.get(u, {})
+        dlat = (n.get("y", 0.0) - dest_y) * 111_000
+        dlon = (n.get("x", 0.0) - dest_x) * 111_000 * 0.85
+        return (dlat ** 2 + dlon ** 2) ** 0.5 / 14.0  # ~50 km/h in m/s
+
     routes: list[dict] = []
     try:
-        path_generator = nx.shortest_simple_paths(
-            work_graph,
-            origin_node,
-            destination_node,
-            weight=_WEIGHT_ATTR,
-        )
-        for i, path in enumerate(path_generator):
-            if len(routes) >= k or i >= _MAX_CANDIDATES:
-                break
-            route = _build_route_dict(path, work_graph)
-            routes.append(route)
+        if k == 1:
+            # Single best path — use A* (fastest for point-to-point).
+            path = nx.astar_path(
+                work_graph,
+                origin_node,
+                destination_node,
+                heuristic=_heuristic,
+                weight=_WEIGHT_ATTR,
+            )
+            routes.append(_build_route_dict(path, work_graph))
+        else:
+            # k > 1 alternatives — use Yen's (shortest_simple_paths).
+            # A* only finds one path; Yen's enumerates k-best.
+            path_generator = nx.shortest_simple_paths(
+                work_graph,
+                origin_node,
+                destination_node,
+                weight=_WEIGHT_ATTR,
+            )
+            for i, path in enumerate(path_generator):
+                if len(routes) >= k or i >= _MAX_CANDIDATES:
+                    break
+                routes.append(_build_route_dict(path, work_graph))
     except nx.NetworkXNoPath:
         logger.info(
             "No path from %d to %d after blocking %d edges",
