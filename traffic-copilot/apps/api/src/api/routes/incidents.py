@@ -857,9 +857,10 @@ async def get_map_data(
                         if node:
                             snapped.append(node)
 
-                    # Route between consecutive snapped nodes,
-                    # compute k=3 alternatives and pick the one with
-                    # shortest travel time that avoids blocked edges.
+                    # Route between consecutive snapped nodes using A* (k=1).
+                    # A* uses straight-line heuristic → faster than Dijkstra
+                    # on 67k-node Ahmedabad graph. Blocked edges exclude
+                    # congested segments so the diversion avoids the jam.
                     if len(snapped) >= 2:
                         for i in range(len(snapped) - 1):
                             seg_routes = await compute_diversion_routes(
@@ -867,11 +868,10 @@ async def get_map_data(
                                 destination_node=snapped[i + 1],
                                 graph=graph,
                                 blocked_edges=wp_blocked,
-                                k=3,
+                                k=1,
                             )
                             if seg_routes:
-                                # Pick best: shortest distance among candidates
-                                best_seg = min(seg_routes, key=lambda r: r["distance_m"])
+                                best_seg = seg_routes[0]  # A* already returns optimal
                                 seg_coords = best_seg["route_geojson"]["coordinates"]
                                 if all_coords:
                                     seg_coords = seg_coords[1:]
