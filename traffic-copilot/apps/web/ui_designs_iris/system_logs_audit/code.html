@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IRIS Intelligence - Logs</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#4e6a40",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#113f00",
+              "on-primary-fixed-variant": "#185200",
+              "error": "#ba1a1a",
+              "inverse-on-surface": "#eff1f3",
+              "surface": "#f8f9fb",
+              "on-background": "#191c1e",
+              "on-tertiary-container": "#690749",
+              "on-surface-variant": "#41493b",
+              "primary": "#2a6c0d",
+              "surface-bright": "#f8f9fb",
+              "surface-container-high": "#e6e8ea",
+              "on-secondary-fixed-variant": "#334e27",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e0e3e5",
+              "on-error-container": "#93000a",
+              "surface-container-low": "#f2f4f6",
+              "error-container": "#ffdad6",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed": "#ffd8e8",
+              "tertiary-container": "#eb78b7",
+              "on-tertiary": "#ffffff",
+              "outline": "#717a6a",
+              "on-secondary-fixed": "#082102",
+              "tertiary-fixed-dim": "#ffafd6",
+              "on-tertiary-fixed": "#3c0028",
+              "inverse-surface": "#2d3133",
+              "secondary-fixed": "#ccecb8",
+              "secondary": "#4a663d",
+              "tertiary": "#9d3874",
+              "outline-variant": "#c1c9b7",
+              "on-primary-fixed": "#062100",
+              "surface-container": "#eceef0",
+              "background": "#f8f9fb",
+              "on-tertiary-fixed-variant": "#7f1e5b",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#191c1e",
+              "primary-fixed": "#abf688",
+              "secondary-fixed-dim": "#b0d09d",
+              "surface-variant": "#e0e3e5",
+              "surface-dim": "#d8dadc",
+              "inverse-primary": "#90d96f",
+              "primary-container": "#6ab04c",
+              "primary-fixed-dim": "#90d96f",
+              "surface-tint": "#2a6c0d",
+              "secondary-container": "#c9e9b5"
+            },
+            fontFamily: {
+              "headline": ["Public Sans"],
+              "body": ["Public Sans"],
+              "label": ["Public Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .primary-gradient {
+            background: linear-gradient(145deg, #2a6c0d 0%, #6ab04c 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar Component -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r-0 bg-[#F2F4F6] dark:bg-slate-900 flex flex-col h-full p-4 font-public-sans text-sm tracking-tight">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-8 h-8 primary-gradient rounded-lg flex items-center justify-center text-white">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">visibility</span>
+</div>
+<span class="text-xl font-bold text-[#2D3436] dark:text-white">IRIS</span>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">map</span>
+<span>Live Map</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">smart_toy</span>
+<span>IRIS Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 bg-white dark:bg-slate-800 text-[#2A6C0D] font-semibold rounded-lg shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history</span>
+<span>Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined">settings</span>
+<span>Settings</span>
+</a>
+</nav>
+<div class="mt-auto p-2 bg-white/40 dark:bg-slate-800/40 rounded-xl flex items-center gap-3">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="Close up portrait of male system administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB4FPHFvJUJmB6WhDC6zDpp9eSl6JkcndGyLia7LoqhE0tByaX-UKMJzNOgNcAdjEIaBefES5Ul27xZxQ-5Z1NpVx_K664exA8T1hIoMOVNSz-AxRf9jU5Ln1eeLp1-YluJF2SOOOJ_xizBJYOQBBZBqxwoQIRlZDdtHM3rHQTbcUpbq4Zs-Xm7o1GCpp03rbTZCKmNkUz9Qq-FW80O2uKlPB7mqjPKbekvMph70VQ6sBrMzMbq-1vVHij_mDaFvqyk9E-frxpBhBK"/>
+</div>
+<div class="flex flex-col">
+<span class="font-bold text-xs text-on-surface">Admin User</span>
+<span class="text-[10px] text-on-surface-variant">System Master</span>
+</div>
+</div>
+</aside>
+<!-- TopNavBar Component -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-[#F8F9FB] dark:bg-slate-950 flex justify-between items-center px-8 z-10 font-public-sans text-sm font-medium">
+<div class="flex items-center gap-8">
+<h1 class="text-lg font-bold text-[#2D3436] dark:text-white">IRIS Intelligence</h1>
+<div class="flex items-center gap-6 text-[#2D3436]/60">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-base">location_on</span>
+<span>Location: Central District</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span>Status: Online</span>
+</div>
+<span class="text-xs opacity-60 italic">Updated 2m ago</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-full hover:bg-surface-container-low transition-colors text-on-surface-variant">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+<div class="flex items-center gap-2 text-[#2A6C0D] font-semibold cursor-pointer">
+<span>Central Command</span>
+<span class="material-symbols-outlined">expand_more</span>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen bg-surface">
+<div class="max-w-6xl mx-auto p-8">
+<!-- Page Header & Filters -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<h2 class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">System Activity Logs</h2>
+<p class="text-on-surface-variant font-medium">Real-time audit trail of AI operations and administrative overrides.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-lg">search</span>
+<input class="pl-10 pr-4 py-2.5 bg-surface-container-lowest border-none rounded-full text-sm w-64 focus:ring-2 focus:ring-primary/20 shadow-sm transition-all" placeholder="Search events..." type="text"/>
+</div>
+<button class="flex items-center gap-2 px-5 py-2.5 bg-surface-container-lowest rounded-full text-sm font-semibold text-on-surface shadow-sm hover:bg-surface-container-low transition-all">
+<span class="material-symbols-outlined text-lg">filter_list</span>
+<span>Filter</span>
+</button>
+<button class="flex items-center gap-2 px-5 py-2.5 primary-gradient rounded-full text-sm font-semibold text-on-primary shadow-md hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-lg">download</span>
+<span>Export CSV</span>
+</button>
+</div>
+</div>
+<!-- Log Content: Vertical Timeline List -->
+<div class="space-y-4">
+<!-- Log Entry 1: AI Action -->
+<div class="group bg-surface-container-lowest p-5 rounded-xl flex items-start gap-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<div class="w-[2px] h-full bg-surface-container mt-4 rounded-full"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface flex items-center gap-2">
+                                    AI Assistant
+                                    <span class="px-2 py-0.5 rounded-full bg-secondary-container text-[10px] text-on-secondary-container uppercase tracking-wider font-bold">Autonomy</span>
+</h3>
+<p class="text-on-surface leading-relaxed mt-1">AI adjusted signal timing at 7th and Broadway intersection to mitigate peak-hour congestion.</p>
+</div>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">14:22:15</span>
+</div>
+<div class="flex items-center gap-4 mt-3">
+<span class="flex items-center gap-1.5 text-xs text-primary font-semibold">
+<span class="material-symbols-outlined text-sm">check_circle</span>
+                                Optimization Applied
+                            </span>
+<span class="text-xs text-on-surface-variant/60">•</span>
+<span class="text-xs text-on-surface-variant font-medium">Traffic flow increased by 12%</span>
+</div>
+</div>
+</div>
+<!-- Log Entry 2: Admin Approval -->
+<div class="group bg-surface-container-lowest p-5 rounded-xl flex items-start gap-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-primary-container/20 flex items-center justify-center text-primary shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+</div>
+<div class="w-[2px] h-full bg-surface-container mt-4 rounded-full"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface flex items-center gap-2">
+                                    Administrator
+                                    <span class="px-2 py-0.5 rounded-full bg-primary-container text-[10px] text-on-primary-container uppercase tracking-wider font-bold">Override</span>
+</h3>
+<p class="text-on-surface leading-relaxed mt-1">Admin approved emergency diversion for Bridge Street due to scheduled maintenance delay.</p>
+</div>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">13:45:02</span>
+</div>
+<div class="flex items-center gap-4 mt-3">
+<span class="flex items-center gap-1.5 text-xs text-primary font-semibold">
+<span class="material-symbols-outlined text-sm">task_alt</span>
+                                Authorized
+                            </span>
+<span class="text-xs text-on-surface-variant/60">•</span>
+<span class="text-xs text-on-surface-variant font-medium underline cursor-pointer">View Authorization Token</span>
+</div>
+</div>
+</div>
+<!-- Log Entry 3: System Event -->
+<div class="group bg-surface-container-lowest p-5 rounded-xl flex items-start gap-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">videocam</span>
+</div>
+<div class="w-[2px] h-full bg-surface-container mt-4 rounded-full"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface flex items-center gap-2">
+                                    System Core
+                                    <span class="px-2 py-0.5 rounded-full bg-surface-container-highest text-[10px] text-on-surface-variant uppercase tracking-wider font-bold">Network</span>
+</h3>
+<p class="text-on-surface leading-relaxed mt-1">CAM-842 connectivity restored. Automatic recalibration successful after 15-minute outage.</p>
+</div>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">13:10:48</span>
+</div>
+<div class="flex items-center gap-4 mt-3">
+<span class="flex items-center gap-1.5 text-xs text-blue-600 font-semibold">
+<span class="material-symbols-outlined text-sm">sensors</span>
+                                Online
+                            </span>
+<span class="text-xs text-on-surface-variant/60">•</span>
+<span class="text-xs text-on-surface-variant font-medium">Uptime efficiency: 98.4%</span>
+</div>
+</div>
+</div>
+<!-- Log Entry 4: Warning/Critical AI -->
+<div class="group bg-surface-container-lowest p-5 rounded-xl flex items-start gap-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">report</span>
+</div>
+<div class="w-[2px] h-full bg-surface-container mt-4 rounded-full"></div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface flex items-center gap-2">
+                                    IRIS Intelligence
+                                    <span class="px-2 py-0.5 rounded-full bg-error-container text-[10px] text-on-error-container uppercase tracking-wider font-bold">Critical</span>
+</h3>
+<p class="text-on-surface leading-relaxed mt-1">Auto-brake override detected in Sector 4. Collision averted by AI proactive braking protocol.</p>
+</div>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">12:05:33</span>
+</div>
+<div class="flex items-center gap-4 mt-3">
+<span class="flex items-center gap-1.5 text-xs text-error font-semibold">
+<span class="material-symbols-outlined text-sm">warning</span>
+                                Incident Logged
+                            </span>
+<span class="text-xs text-on-surface-variant/60">•</span>
+<span class="text-xs text-on-surface-variant font-medium underline cursor-pointer">Analyze Telemetry</span>
+</div>
+</div>
+</div>
+<!-- Log Entry 5: AI Logic -->
+<div class="group bg-surface-container-lowest p-5 rounded-xl flex items-start gap-6 hover:shadow-lg hover:shadow-primary/5 transition-all duration-300">
+<div class="flex flex-col items-center pt-1">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-on-secondary-container shadow-sm">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">psychology</span>
+</div>
+</div>
+<div class="flex-1">
+<div class="flex justify-between items-start mb-1">
+<div>
+<h3 class="font-bold text-on-surface flex items-center gap-2">
+                                    IRIS Core Analytics
+                                    <span class="px-2 py-0.5 rounded-full bg-secondary-container text-[10px] text-on-secondary-container uppercase tracking-wider font-bold">Inference</span>
+</h3>
+<p class="text-on-surface leading-relaxed mt-1">Dynamic route re-calculation triggered for all emergency vehicles due to parade route blockage.</p>
+</div>
+<span class="text-xs font-medium text-on-surface-variant bg-surface-container px-3 py-1 rounded-full">11:58:12</span>
+</div>
+<div class="flex items-center gap-4 mt-3">
+<span class="flex items-center gap-1.5 text-xs text-primary font-semibold">
+<span class="material-symbols-outlined text-sm">route</span>
+                                Routes Updated
+                            </span>
+<span class="text-xs text-on-surface-variant/60">•</span>
+<span class="text-xs text-on-surface-variant font-medium">8 Vehicles Re-routed</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Pagination/Load More -->
+<div class="mt-12 flex items-center justify-center">
+<button class="px-8 py-3 bg-surface-container-low rounded-full text-sm font-bold text-on-surface-variant hover:bg-surface-container transition-all flex items-center gap-2">
+<span class="material-symbols-outlined">expand_more</span>
+                    Load older activity
+                </button>
+</div>
+</div>
+</main>
+<!-- Contextual FAB - Only for specific log actions like "Mark All as Read" or "New Entry" -->
+<!-- Suppressed based on Rule: Suppress on Detail/Log/Transactional screens to prioritize focus -->
+</body></html>

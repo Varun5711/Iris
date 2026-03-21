@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IRIS Analytics - Road Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+              "on-secondary-container": "#4e6a40",
+              "on-primary": "#ffffff",
+              "on-primary-container": "#113f00",
+              "on-primary-fixed-variant": "#185200",
+              "error": "#ba1a1a",
+              "inverse-on-surface": "#eff1f3",
+              "surface": "#f8f9fb",
+              "on-background": "#191c1e",
+              "on-tertiary-container": "#690749",
+              "on-surface-variant": "#41493b",
+              "primary": "#2a6c0d",
+              "surface-bright": "#f8f9fb",
+              "surface-container-high": "#e6e8ea",
+              "on-secondary-fixed-variant": "#334e27",
+              "on-error": "#ffffff",
+              "surface-container-highest": "#e0e3e5",
+              "on-error-container": "#93000a",
+              "surface-container-low": "#f2f4f6",
+              "error-container": "#ffdad6",
+              "on-secondary": "#ffffff",
+              "tertiary-fixed": "#ffd8e8",
+              "tertiary-container": "#eb78b7",
+              "on-tertiary": "#ffffff",
+              "outline": "#717a6a",
+              "on-secondary-fixed": "#082102",
+              "tertiary-fixed-dim": "#ffafd6",
+              "on-tertiary-fixed": "#3c0028",
+              "inverse-surface": "#2d3133",
+              "secondary-fixed": "#ccecb8",
+              "secondary": "#4a663d",
+              "tertiary": "#9d3874",
+              "outline-variant": "#c1c9b7",
+              "on-primary-fixed": "#062100",
+              "surface-container": "#eceef0",
+              "background": "#f8f9fb",
+              "on-tertiary-fixed-variant": "#7f1e5b",
+              "surface-container-lowest": "#ffffff",
+              "on-surface": "#191c1e",
+              "primary-fixed": "#abf688",
+              "secondary-fixed-dim": "#b0d09d",
+              "surface-variant": "#e0e3e5",
+              "surface-dim": "#d8dadc",
+              "inverse-primary": "#90d96f",
+              "primary-container": "#6ab04c",
+              "primary-fixed-dim": "#90d96f",
+              "surface-tint": "#2a6c0d",
+              "secondary-container": "#c9e9b5"
+            },
+            fontFamily: {
+              "headline": ["Public Sans"],
+              "body": ["Public Sans"],
+              "label": ["Public Sans"]
+            },
+            borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+          },
+        },
+      }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .signature-gradient {
+            background: linear-gradient(145deg, #2a6c0d 0%, #6ab04c 100%);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r-0 bg-[#F2F4F6] dark:bg-slate-900 flex flex-col p-4 z-50">
+<div class="mb-8 px-4">
+<h1 class="text-xl font-bold text-[#2D3436] dark:text-white tracking-tight">IRIS</h1>
+<p class="text-xs text-[#2D3436]/60 dark:text-slate-400 font-medium">Road Intelligence</p>
+</div>
+<nav class="flex-1 space-y-1">
+<!-- Analytics is the active tab for this page -->
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span>Live Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-[#2A6C0D] font-semibold rounded-lg shadow-sm font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span>IRIS Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 dark:hover:bg-slate-800 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>Logs</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-[#F2F4F6] dark:border-slate-800">
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg font-public-sans text-sm tracking-tight" href="#">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+<span>Settings</span>
+</a>
+<div class="mt-4 px-4 flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary-container/20 flex items-center justify-center">
+<img alt="User Profile" class="w-full h-full rounded-full" data-alt="User profile avatar circle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxz8KAercN0G1Lcs-ANVLcrbOHySPAp6ezErQvztctayppnmMU1rJuJWx_epExJYlEBRIq9V_e30XqNQQ0om9XgLn3JqEC0WPPl6KcgeKwIYCQcNSUZT2k_0b0DFN1OqrGCQMocbSm0TB57vvGrfteBdoQOWduI_i40jBAgmXHt6eSGvf-_OJRyBgqQTmjhe910YGQ6A3v9ZgJtCGfDG1qzQ8oRxKy-r00weQZGkpc5jpA8ycip6T2c1vfIGruun8O1owE8ZYhLMaC"/>
+</div>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate text-on-surface">Admin User</p>
+<p class="text-[10px] text-on-surface-variant truncate">District Hub</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-[#F8F9FB] dark:bg-slate-950 flex justify-between items-center px-8 z-40">
+<div class="flex items-center gap-6">
+<h2 class="text-lg font-bold text-[#2D3436] dark:text-white">IRIS Intelligence</h2>
+<div class="hidden lg:flex items-center gap-4 text-sm font-medium text-[#2D3436]/60">
+<span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-primary"></span> Location: Central District</span>
+<span>Status: Online</span>
+<span class="opacity-50 text-xs">Updated 2m ago</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-[#2D3436]/60 hover:text-[#2A6C0D] transition-all">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-[#2D3436]/60 hover:text-[#2A6C0D] transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<div class="h-8 w-[1px] bg-outline-variant/30 mx-2"></div>
+<div class="flex items-center gap-3 pl-2 opacity-80 hover:opacity-100 cursor-pointer">
+<span class="text-xs font-semibold text-on-surface">Administrator</span>
+<img alt="Administrator" class="w-8 h-8 rounded-full border border-outline-variant/20" data-alt="Administrator profile picture small" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAycNROcX-xhqm62a_5VwPBsKN4z22DWOJUvmTFsLKUm7Pay1Xe01V7BvvzqXwdNIXnUZr6s6YOzerSWbeiDJmEQ1yCb8fAT-jiPyppcx8uC_nCXFc6kWmf9tW8GM4kiE6g4ZKcBq2kSN8WnYPDlEsFfNIRtjmrpaiMBrXXhiuQrhCIhdJ0I9sRrYHn7hYpn_6c0KBFfvCYynJLSJ5ayuFKeTQV9z2-rIdMpW8ixRZma2fyzteCUhTXy7tFafzji_b2CZwepi2IBV7C"/>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-64 pt-16 min-h-screen bg-surface p-8">
+<!-- Header Section -->
+<div class="flex items-end justify-between mb-8">
+<div>
+<h3 class="text-3xl font-extrabold text-on-surface tracking-tight mb-1">District Analytics</h3>
+<p class="text-on-surface-variant text-sm font-medium">System-wide performance monitoring and traffic flow intelligence.</p>
+</div>
+<div class="flex gap-3">
+<button class="px-5 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-full transition-all">
+                    Export Report
+                </button>
+<button class="px-6 py-2 text-sm font-semibold text-white signature-gradient rounded-full shadow-md hover:brightness-110 active:scale-95 transition-all">
+                    Live Monitor
+                </button>
+</div>
+</div>
+<!-- KPI Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0">
+<div class="flex justify-between items-start mb-4">
+<span class="p-2 bg-primary-container/20 text-primary rounded-lg material-symbols-outlined" data-icon="emergency">emergency</span>
+<span class="text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="trending_down">trending_down</span> 12%
+                    </span>
+</div>
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Incidents (Week)</p>
+<h4 class="text-3xl font-bold text-on-surface">142</h4>
+<div class="mt-4 h-1 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full w-[65%]"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0">
+<div class="flex justify-between items-start mb-4">
+<span class="p-2 bg-secondary-container text-on-secondary-container rounded-lg material-symbols-outlined" data-icon="timer">timer</span>
+<span class="text-xs font-bold text-primary flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_downward">arrow_downward</span> 2.4m
+                    </span>
+</div>
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Avg Response Time</p>
+<h4 class="text-3xl font-bold text-on-surface">6.8 <span class="text-sm font-medium opacity-50">min</span></h4>
+<div class="mt-4 flex gap-1 h-1">
+<div class="flex-1 bg-primary rounded-full"></div>
+<div class="flex-1 bg-primary rounded-full"></div>
+<div class="flex-1 bg-primary rounded-full"></div>
+<div class="flex-1 bg-surface-container rounded-full"></div>
+<div class="flex-1 bg-surface-container rounded-full"></div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-0">
+<div class="flex justify-between items-start mb-4">
+<span class="p-2 bg-tertiary-container/20 text-tertiary rounded-lg material-symbols-outlined" data-icon="traffic">traffic</span>
+<span class="text-xs font-bold text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm" data-icon="remove">remove</span> Stable
+                    </span>
+</div>
+<p class="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Signal Efficiency</p>
+<h4 class="text-3xl font-bold text-on-surface">94.2%</h4>
+<div class="mt-4 h-1 w-full bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary rounded-full w-[94%]"></div>
+</div>
+</div>
+</div>
+<!-- Charts Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+<!-- Traffic Trends (Large) -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm p-6">
+<div class="flex justify-between items-center mb-8">
+<div>
+<h5 class="font-bold text-on-surface">Traffic Trends</h5>
+<p class="text-xs text-on-surface-variant">Vehicle counts over last 24 hours</p>
+</div>
+<select class="bg-surface border-0 text-xs font-bold rounded-full px-4 py-2 ring-1 ring-outline-variant/10">
+<option>Last 24 Hours</option>
+<option>Last 7 Days</option>
+</select>
+</div>
+<div class="relative h-64 w-full">
+<!-- Line Chart Visual Representation -->
+<div class="absolute inset-0 flex items-end justify-between px-2 opacity-10">
+<div class="w-[1px] h-full bg-on-surface"></div>
+<div class="w-[1px] h-full bg-on-surface"></div>
+<div class="w-[1px] h-full bg-on-surface"></div>
+<div class="w-[1px] h-full bg-on-surface"></div>
+<div class="w-[1px] h-full bg-on-surface"></div>
+</div>
+<!-- SVG Chart -->
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none">
+<defs>
+<lineargradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#2a6c0d" stop-opacity="0.1"></stop>
+<stop offset="100%" stop-color="#2a6c0d" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<!-- Area Fill -->
+<path d="M0 250 Q 50 200 100 220 T 200 150 T 300 180 T 400 100 T 500 130 T 600 80 T 700 110 T 800 50 L 800 250 L 0 250 Z" fill="url(#chartGradient)" stroke="none"></path>
+<!-- Line -->
+<path d="M0 250 Q 50 200 100 220 T 200 150 T 300 180 T 400 100 T 500 130 T 600 80 T 700 110 T 800 50" fill="none" stroke="#2a6c0d" stroke-width="1.5"></path>
+<!-- Tooltip point -->
+<circle cx="600" cy="80" fill="#2a6c0d" r="4"></circle>
+</svg>
+<div class="absolute top-[60px] left-[580px] bg-white shadow-xl px-2 py-1 rounded text-[10px] font-bold border border-primary/20">
+                        18:00 — 4.2k vehicles
+                    </div>
+</div>
+<div class="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
+<span>00:00</span>
+<span>06:00</span>
+<span>12:00</span>
+<span>18:00</span>
+<span>23:59</span>
+</div>
+</div>
+<!-- Congestion Heatmap -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
+<div class="p-6">
+<h5 class="font-bold text-on-surface">Congestion Heatmap</h5>
+<p class="text-xs text-on-surface-variant">Active intersection density</p>
+</div>
+<div class="flex-1 relative m-4 mt-0 bg-surface rounded-lg overflow-hidden min-h-[200px]">
+<img alt="City Traffic Heatmap" class="w-full h-full object-cover grayscale opacity-40" data-alt="Abstract heatmap overlay on a grayscale city street map" data-location="Central District" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdwxJSS0SZ6GWzhh2JYmOwvlDoi8ZsKcvIlYPpUwN5v92fGce3DgXI_pgvVzRExmXV06K892Ww_rCGwVBIDy1f_ACkgB7c9f337f_6TXqNjfF7X3jDTBUfEuXAHO1SbTZl6kNt6PrINGGvsyPLQGnRcuqeim4IBuhRQCtq-J6EIuA4WVCq7pbbtjl8Pi5nbuu-kTQPYQrAF6wwCnKWvuAhtwllkIbgqt_nh4aJzh0hybd5QWTy-I0iIvlhoHH6ODsPiYx9RmDYelMK"/>
+<!-- Overlay Heat Zones -->
+<div class="absolute top-1/4 left-1/3 w-16 h-16 bg-error/20 rounded-full blur-xl"></div>
+<div class="absolute top-1/2 left-1/2 w-24 h-24 bg-primary/20 rounded-full blur-2xl"></div>
+<div class="absolute bottom-1/4 right-1/4 w-12 h-12 bg-error/30 rounded-full blur-lg"></div>
+<!-- Pointers -->
+<div class="absolute top-1/4 left-1/3 flex flex-col items-center">
+<span class="w-3 h-3 bg-error rounded-full ring-4 ring-error/20"></span>
+<div class="mt-1 bg-white px-2 py-0.5 rounded shadow text-[9px] font-bold whitespace-nowrap">Hills Rd Jct</div>
+</div>
+</div>
+<div class="p-6 pt-0 space-y-3">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-xs font-medium">Critical (4 Intersections)</span>
+</div>
+<span class="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer" data-icon="chevron_right">chevron_right</span>
+</div>
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<span class="text-xs font-medium">Fluid (12 Intersections)</span>
+</div>
+<span class="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer" data-icon="chevron_right">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- Bar Chart (District Speed) -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm p-6 lg:col-span-1">
+<h5 class="font-bold text-on-surface mb-1">Avg Speed by District</h5>
+<p class="text-xs text-on-surface-variant mb-6">Kilometers per hour (km/h)</p>
+<div class="space-y-6">
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-bold">
+<span>CENTRAL HUB</span>
+<span class="text-primary">34 km/h</span>
+</div>
+<div class="h-2 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 45%;"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-bold">
+<span>NORTHERN GATEWAY</span>
+<span class="text-primary">52 km/h</span>
+</div>
+<div class="h-2 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 72%;"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-bold">
+<span>WEST END TERMINAL</span>
+<span class="text-primary">28 km/h</span>
+</div>
+<div class="h-2 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-primary-container rounded-full" style="width: 38%;"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between text-[10px] font-bold">
+<span>SOUTH PARKWAY</span>
+<span class="text-primary">48 km/h</span>
+</div>
+<div class="h-2 w-full bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full" style="width: 65%;"></div>
+</div>
+</div>
+</div>
+<div class="mt-8 p-4 bg-secondary-container rounded-lg">
+<div class="flex items-start gap-3">
+<span class="material-symbols-outlined text-on-secondary-container" data-icon="lightbulb">lightbulb</span>
+<div>
+<p class="text-xs font-bold text-on-secondary-container leading-tight">Optimization Tip</p>
+<p class="text-[10px] text-on-secondary-container/80 mt-1">Adjusting signal 42 in West End could improve flow by 14%.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI Copilot Insight (Special Component) -->
+<div class="lg:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm border-b-4 border-secondary-container relative overflow-hidden flex flex-col md:flex-row">
+<div class="p-8 md:w-2/3">
+<div class="flex items-center gap-2 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome">auto_awesome</span>
+<h5 class="text-sm font-bold text-on-surface uppercase tracking-widest">IRIS Intelligence Insight</h5>
+</div>
+<p class="text-lg font-medium text-on-surface mb-4 leading-relaxed">
+                        Anomalous traffic pattern detected on <span class="text-primary font-bold underline decoration-primary/30">Kings Highway</span>. Current congestion is 22% higher than seasonal average for a Tuesday afternoon.
+                    </p>
+<div class="flex gap-4">
+<button class="text-xs font-bold py-2 px-4 rounded-full bg-surface ring-1 ring-outline-variant/20 hover:bg-surface-container-high transition-all">Show Details</button>
+<button class="text-xs font-bold py-2 px-4 rounded-full text-white signature-gradient transition-all">Optimize Route</button>
+</div>
+</div>
+<div class="md:w-1/3 bg-secondary-container/20 flex items-center justify-center p-8">
+<div class="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-white flex items-center justify-center relative overflow-hidden">
+<div class="absolute inset-0 bg-primary opacity-5 flex items-center justify-center">
+<div class="w-full h-1 bg-primary/20 rotate-45"></div>
+</div>
+<span class="material-symbols-outlined text-5xl text-primary font-light" data-icon="psychology">psychology</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer / Meta -->
+<footer class="mt-12 flex justify-between items-center text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] opacity-50">
+<div>© 2024 IRIS Civil Solutions</div>
+<div class="flex gap-4">
+<a class="hover:text-primary transition-colors" href="#">Documentation</a>
+<a class="hover:text-primary transition-colors" href="#">Privacy</a>
+<a class="hover:text-primary transition-colors" href="#">API Access</a>
+</div>
+</footer>
+</main>
+</body></html>
