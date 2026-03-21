@@ -1,234 +1,369 @@
-export default function DashboardPage() {
+"use client";
+
+import { useEffect, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import type { AnalyticsData } from "@/lib/types";
+import type { MapMarker } from "@/components/map/MapboxMap";
+
+const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
+
+const INCIDENT_MARKERS: MapMarker[] = [
+  { id: "INC-8821", lat: 40.7589, lng: -73.9851, type: "incident", severity: "critical", label: "INC-8821", popup: "HWY 101 North Congestion — Critical" },
+  { id: "INC-8820", lat: 40.7689, lng: -73.9651, type: "incident", severity: "high", label: "INC-8820", popup: "Signal Malfunction Exit 12 — High" },
+  { id: "CAM-042", lat: 40.7529, lng: -73.9773, type: "camera", label: "CAM-042", popup: "5th Ave & Broadway — Live" },
+  { id: "CAM-018", lat: 40.7440, lng: -74.0021, type: "camera", label: "CAM-018", popup: "West End Terminal — Live" },
+];
+
+function MiniChart({ data, color = "#2A6C0D" }: { data: number[]; color?: string }) {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const h = 48;
+  const w = 120;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / (max - min || 1)) * h;
+    return `${x},${y}`;
+  });
+  const polyline = points.join(" ");
+  const area = `${points[0]} ${points.slice(1).join(" ")} ${w},${h} 0,${h}`;
   return (
-    <main className="min-h-screen bg-surface p-8 pt-24">
-      {/* Header Section */}
-      <div className="flex items-end justify-between mb-8">
-        <div>
-          <h3 className="text-3xl font-extrabold text-on-surface tracking-tight mb-1">District Analytics</h3>
-          <p className="text-on-surface-variant text-sm font-medium">System-wide performance monitoring and traffic flow intelligence.</p>
-        </div>
-        <div className="flex gap-3">
-          <button className="px-5 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-full transition-all">
-            Export Report
-          </button>
-          <button className="px-6 py-2 text-sm font-semibold text-white signature-gradient rounded-full shadow-md hover:brightness-110 active:scale-95 transition-all">
-            Live Monitor
-          </button>
-        </div>
-      </div>
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-12" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="mini-grad" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={area} fill="url(#mini-grad)" />
+      <polyline points={polyline} fill="none" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
-      {/* KPI Bento Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <span className="p-2 bg-primary-container/20 text-primary rounded-lg material-symbols-outlined">emergency</span>
-            <span className="text-xs font-bold text-primary flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">trending_down</span> 12%
-            </span>
-          </div>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Total Incidents (Week)</p>
-          <h4 className="text-3xl font-bold text-on-surface">142</h4>
-          <div className="mt-4 h-1 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full bg-primary rounded-full w-[65%]"></div>
-          </div>
-        </div>
+export default function DashboardPage() {
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
 
-        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <span className="p-2 bg-secondary-container text-on-secondary-container rounded-lg material-symbols-outlined">timer</span>
-            <span className="text-xs font-bold text-primary flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">arrow_downward</span> 2.4m
-            </span>
-          </div>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Avg Response Time</p>
-          <h4 className="text-3xl font-bold text-on-surface">6.8 <span className="text-sm font-medium opacity-50">min</span></h4>
-          <div className="mt-4 flex gap-1 h-1">
-            <div className="flex-1 bg-primary rounded-full"></div>
-            <div className="flex-1 bg-primary rounded-full"></div>
-            <div className="flex-1 bg-primary rounded-full"></div>
-            <div className="flex-1 bg-surface-container rounded-full"></div>
-            <div className="flex-1 bg-surface-container rounded-full"></div>
-          </div>
-        </div>
+  const loadAnalytics = useCallback(async () => {
+    try {
+      const res = await fetch("/api/analytics");
+      const data = await res.json();
+      setAnalytics(data);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch {
+      // keep last data
+    }
+  }, []);
 
-        <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
-          <div className="flex justify-between items-start mb-4">
-            <span className="p-2 bg-tertiary-container/20 text-tertiary rounded-lg material-symbols-outlined">traffic</span>
-            <span className="text-xs font-bold text-on-surface-variant flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm">remove</span> Stable
-            </span>
-          </div>
-          <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Signal Efficiency</p>
-          <h4 className="text-3xl font-bold text-on-surface">94.2%</h4>
-          <div className="mt-4 h-1 w-full bg-surface-container rounded-full overflow-hidden">
-            <div className="h-full bg-tertiary rounded-full w-[94%]"></div>
-          </div>
-        </div>
-      </div>
+  useEffect(() => {
+    loadAnalytics();
+    const iv = setInterval(loadAnalytics, 15000);
+    return () => clearInterval(iv);
+  }, [loadAnalytics]);
 
-      {/* Charts Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Traffic Trends (Large) */}
-        <div className="lg:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm p-6">
-          <div className="flex justify-between items-center mb-8">
+  const speedData = analytics?.trafficTrend.map((t) => t.count * 0.05 + 25) ?? [30, 32, 35, 34, 36, 33, 35, 38, 35, 33, 34, 35];
+  const countData = analytics?.trafficTrend.map((t) => t.count) ?? [250, 280, 310, 290, 330, 420, 560, 620, 590, 540, 580, 610];
+
+  return (
+    <main className="h-screen flex flex-col overflow-hidden pt-16 bg-surface">
+      {/* Top breadcrumb bar */}
+      <div className="flex items-center justify-between px-6 py-3 bg-surface-container-lowest border-b border-outline-variant/10 shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary text-lg">location_on</span>
             <div>
-              <h5 className="font-bold text-on-surface">Traffic Trends</h5>
-              <p className="text-xs text-on-surface-variant">Vehicle counts over last 24 hours</p>
-            </div>
-            <select className="bg-surface border-0 text-xs font-bold rounded-full px-4 py-2 ring-1 ring-outline-variant/10 focus:outline-none">
-              <option>Last 24 Hours</option>
-              <option>Last 7 Days</option>
-            </select>
-          </div>
-          <div className="relative h-64 w-full">
-            <svg className="w-full h-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 800 250">
-              <defs>
-                <linearGradient id="chartGradient" x1="0" x2="0" y1="0" y2="1">
-                  <stop offset="0%" stopColor="#2a6c0d" stopOpacity="0.1" />
-                  <stop offset="100%" stopColor="#2a6c0d" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              <path d="M0 250 Q 50 200 100 220 T 200 150 T 300 180 T 400 100 T 500 130 T 600 80 T 700 110 T 800 50 L 800 250 L 0 250 Z" fill="url(#chartGradient)" stroke="none" />
-              <path d="M0 250 Q 50 200 100 220 T 200 150 T 300 180 T 400 100 T 500 130 T 600 80 T 700 110 T 800 50" fill="none" stroke="#2a6c0d" strokeWidth="1.5" />
-              <circle cx="600" cy="80" fill="#2a6c0d" r="4" />
-            </svg>
-            <div className="absolute top-[55px] left-[71%] bg-white shadow-xl px-2 py-1 rounded text-[10px] font-bold border border-primary/20">
-              18:00 — 4.2k vehicles
+              <p className="font-bold text-sm text-on-surface">Central Austin</p>
+              <p className="text-[10px] text-primary font-semibold">Online · Update: 00-02</p>
             </div>
           </div>
-          <div className="flex justify-between mt-4 text-[10px] font-bold text-on-surface-variant tracking-wider uppercase">
-            <span>00:00</span>
-            <span>06:00</span>
-            <span>12:00</span>
-            <span>18:00</span>
-            <span>23:59</span>
+          <div className="flex gap-1 ml-4">
+            <button className="px-4 py-1.5 text-xs font-bold text-white bg-primary rounded-full">Overview</button>
+            <Link href="/map"><button className="px-4 py-1.5 text-xs font-medium text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">Device Map</button></Link>
+            <Link href="/settings"><button className="px-4 py-1.5 text-xs font-medium text-on-surface-variant hover:bg-surface-container-low rounded-full transition-colors">Settings</button></Link>
           </div>
         </div>
-
-        {/* Congestion Heatmap */}
-        <div className="bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col">
-          <div className="p-6">
-            <h5 className="font-bold text-on-surface">Congestion Heatmap</h5>
-            <p className="text-xs text-on-surface-variant">Active intersection density</p>
-          </div>
-          <div className="flex-1 relative m-4 mt-0 bg-surface rounded-lg overflow-hidden min-h-[200px]">
-            <img
-              alt="City Traffic Heatmap"
-              className="w-full h-full object-cover grayscale opacity-40"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuDdwxJSS0SZ6GWzhh2JYmOwvlDoi8ZsKcvIlYPpUwN5v92fGce3DgXI_pgvVzRExmXV06K892Ww_rCGwVBIDy1f_ACkgB7c9f337f_6TXqNjfF7X3jDTBUfEuXAHO1SbTZl6kNt6PrINGGvsyPLQGnRcuqeim4IBuhRQCtq-J6EIuA4WVCq7pbbtjl8Pi5nbuu-kTQPYQrAF6wwCnKWvuAhtwllkIbgqt_nh4aJzh0hybd5QWTy-I0iIvlhoHH6ODsPiYx9RmDYelMK"
-            />
-            <div className="absolute top-1/4 left-1/3 w-16 h-16 bg-error/20 rounded-full blur-xl"></div>
-            <div className="absolute top-1/2 left-1/2 w-24 h-24 bg-primary/20 rounded-full blur-2xl"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-12 h-12 bg-error/30 rounded-full blur-lg"></div>
-            <div className="absolute top-1/4 left-1/3 flex flex-col items-center">
-              <span className="w-3 h-3 bg-error rounded-full ring-4 ring-error/20"></span>
-              <div className="mt-1 bg-white px-2 py-0.5 rounded shadow text-[9px] font-bold whitespace-nowrap">Hills Rd Jct</div>
-            </div>
-          </div>
-          <div className="p-6 pt-0 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-error"></span>
-                <span className="text-xs font-medium">Critical (4 Intersections)</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer">chevron_right</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary-container"></span>
-                <span className="text-xs font-medium">Fluid (12 Intersections)</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-on-surface-variant cursor-pointer">chevron_right</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Avg Speed by District Bar Chart */}
-        <div className="bg-surface-container-lowest rounded-xl shadow-sm p-6 lg:col-span-1">
-          <h5 className="font-bold text-on-surface mb-1">Avg Speed by District</h5>
-          <p className="text-xs text-on-surface-variant mb-6">Kilometers per hour (km/h)</p>
-          <div className="space-y-6">
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-on-surface-variant">CENTRAL HUB</span>
-                <span className="text-primary">34 km/h</span>
-              </div>
-              <div className="h-2 w-full bg-surface rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full w-[45%]"></div>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-on-surface-variant">NORTHERN GATEWAY</span>
-                <span className="text-primary">52 km/h</span>
-              </div>
-              <div className="h-2 w-full bg-surface rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full w-[72%]"></div>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-on-surface-variant">WEST END TERMINAL</span>
-                <span className="text-primary">28 km/h</span>
-              </div>
-              <div className="h-2 w-full bg-surface rounded-full overflow-hidden">
-                <div className="h-full bg-primary-container rounded-full w-[38%]"></div>
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] font-bold">
-                <span className="text-on-surface-variant">SOUTH PARKWAY</span>
-                <span className="text-primary">48 km/h</span>
-              </div>
-              <div className="h-2 w-full bg-surface rounded-full overflow-hidden">
-                <div className="h-full bg-primary rounded-full w-[65%]"></div>
-              </div>
-            </div>
-          </div>
-          <div className="mt-8 p-4 bg-secondary-container rounded-lg">
-            <div className="flex items-start gap-3">
-              <span className="material-symbols-outlined text-on-secondary-container">lightbulb</span>
-              <div>
-                <p className="text-xs font-bold text-on-secondary-container leading-tight">Optimization Tip</p>
-                <p className="text-[10px] text-on-secondary-container/80 mt-1">Adjusting signal 42 in West End could improve flow by 14%.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* AI Copilot Insight */}
-        <div className="lg:col-span-2 bg-surface-container-lowest rounded-xl shadow-sm border-b-4 border-secondary-container relative overflow-hidden flex flex-col md:flex-row">
-          <div className="p-8 md:w-2/3">
-            <div className="flex items-center gap-2 mb-4">
-              <span className="material-symbols-outlined text-primary">auto_awesome</span>
-              <h5 className="text-sm font-bold text-on-surface uppercase tracking-widest">IRIS Intelligence Insight</h5>
-            </div>
-            <p className="text-lg font-medium text-on-surface mb-4 leading-relaxed">
-              Anomalous traffic pattern detected on{" "}
-              <span className="text-primary font-bold underline decoration-primary/30">Kings Highway</span>. Current congestion is 22% higher than seasonal average for a Tuesday afternoon.
-            </p>
-            <div className="flex gap-4">
-              <button className="text-xs font-bold py-2 px-4 rounded-full bg-surface ring-1 ring-outline-variant/20 hover:bg-surface-container-high transition-all">Show Details</button>
-              <button className="text-xs font-bold py-2 px-4 rounded-full text-white signature-gradient transition-all">Optimize Route</button>
-            </div>
-          </div>
-          <div className="md:w-1/3 bg-secondary-container/20 flex items-center justify-center p-8">
-            <div className="w-32 h-32 rounded-full border-4 border-white shadow-lg bg-white flex items-center justify-center">
-              <span className="material-symbols-outlined text-5xl text-primary font-light">psychology</span>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 text-[10px] text-on-surface-variant">
+          <span className="material-symbols-outlined text-sm">sync</span>
+          {lastUpdated ? `Updated ${lastUpdated}` : "Loading..."}
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="mt-12 flex justify-between items-center text-[10px] font-bold text-on-surface-variant uppercase tracking-[0.2em] opacity-50">
-        <div>© 2024 IRIS Civil Solutions</div>
-        <div className="flex gap-4">
-          <a className="hover:text-primary transition-colors" href="#">Documentation</a>
-          <a className="hover:text-primary transition-colors" href="#">Privacy</a>
-          <a className="hover:text-primary transition-colors" href="#">API Access</a>
+      {/* Location info bar */}
+      <div className="flex items-center gap-8 px-6 py-2 bg-surface shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Location</span>
+          <span className="text-xs font-semibold text-on-surface">East 7th</span>
         </div>
-      </footer>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider">Substation</span>
+          <span className="text-xs font-semibold text-on-surface">7th & Comal (Segment ID:7C2)</span>
+        </div>
+      </div>
+
+      {/* Main content: map left + insights right */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* LEFT: Live Map */}
+        <div className="flex-1 relative min-w-0">
+          <MapboxMap
+            center={[-97.7431, 30.2672]}
+            zoom={13}
+            markers={INCIDENT_MARKERS}
+            className="w-full h-full"
+            style="mapbox://styles/mapbox/light-v11"
+          />
+          {/* Map search overlay */}
+          <div className="absolute top-4 left-4 z-10">
+            <div className="bg-white rounded-lg shadow-lg p-1.5 flex items-center gap-2 w-56">
+              <span className="material-symbols-outlined text-on-surface-variant text-sm ml-1">search</span>
+              <input className="flex-1 text-xs bg-transparent outline-none placeholder:text-on-surface-variant/50" placeholder="Search segments..." />
+            </div>
+          </div>
+          {/* Zoom controls */}
+          <div className="absolute bottom-6 right-4 z-10 flex flex-col bg-white rounded-lg shadow-lg overflow-hidden">
+            <button className="p-2 hover:bg-surface-container-low transition-colors"><span className="material-symbols-outlined text-sm text-on-surface-variant">add</span></button>
+            <div className="h-px bg-outline-variant/20"></div>
+            <button className="p-2 hover:bg-surface-container-low transition-colors"><span className="material-symbols-outlined text-sm text-on-surface-variant">remove</span></button>
+          </div>
+        </div>
+
+        {/* RIGHT: Traffic Insights Panel */}
+        <div className="w-[420px] shrink-0 flex flex-col overflow-y-auto bg-surface border-l border-outline-variant/10">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 pt-4 pb-2">
+            <h2 className="font-bold text-sm text-on-surface">Traffic Insights</h2>
+            <div className="flex items-center gap-2">
+              <button className="text-[10px] text-on-surface-variant font-medium hover:text-primary transition-colors">Last 3 Hours</button>
+              <button className="text-[10px] text-on-surface-variant font-medium hover:text-primary transition-colors">Northbound</button>
+              <Link href="/map">
+                <button className="px-3 py-1 text-[10px] font-bold text-white bg-primary rounded-full hover:brightness-110 transition-all">View Map</button>
+              </Link>
+            </div>
+          </div>
+
+          {/* KPI Cards Row */}
+          <div className="grid grid-cols-2 gap-3 px-4 pb-3">
+            {/* Vehicle Count */}
+            <div className="bg-surface-container-lowest rounded-xl p-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-on-surface-variant text-base">directions_car</span>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase">Vehicle Count</span>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant/40 text-sm cursor-pointer">settings</span>
+              </div>
+              <div className="flex items-end gap-2 mt-2">
+                <span className="text-3xl font-bold text-on-surface">{analytics?.vehicleCount ?? 137}</span>
+                <span className="text-sm font-semibold text-on-surface-variant mb-1">VEH</span>
+              </div>
+              <div className="mt-2">
+                <MiniChart data={countData} color="#2A6C0D" />
+              </div>
+              <div className="flex justify-between mt-1 text-[9px] font-bold text-on-surface-variant">
+                <span>— Average</span>
+                <span>— Max</span>
+                <span>— Min</span>
+              </div>
+            </div>
+
+            {/* Speed */}
+            <div className="bg-surface-container-lowest rounded-xl p-4">
+              <div className="flex items-center justify-between mb-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-on-surface-variant text-base">speed</span>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase">Speed</span>
+                </div>
+                <span className="material-symbols-outlined text-on-surface-variant/40 text-sm cursor-pointer">settings</span>
+              </div>
+              <div className="flex items-end gap-2 mt-2">
+                <span className="text-3xl font-bold text-on-surface">{analytics?.avgSpeed ?? 35}</span>
+                <span className="text-sm font-semibold text-on-surface-variant mb-1">MPH</span>
+              </div>
+              <div className="mt-2">
+                <MiniChart data={speedData} color="#EAB308" />
+              </div>
+              <div className="flex justify-between mt-1 text-[9px] font-bold text-on-surface-variant">
+                <span>— Average</span>
+                <span>— Normal</span>
+                <span>— Min</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Events + CTECC Row */}
+          <div className="grid grid-cols-2 gap-3 px-4 pb-3">
+            {/* Events */}
+            <div className="bg-surface-container-lowest rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-on-surface-variant text-base">warning</span>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase">Events</span>
+                </div>
+                <div className="flex gap-1">
+                  <span className="w-2 h-2 rounded-full bg-error"></span>
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
+                  <span className="w-2 h-2 rounded-full bg-outline-variant"></span>
+                </div>
+              </div>
+              <p className="text-[9px] text-on-surface-variant mb-2">Last update: 00:02 · Event ID: TC-21</p>
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-error text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>warning</span>
+                  <span className="text-[10px] text-on-surface">Accident Occurred: Yes</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-primary text-sm">cloud</span>
+                  <span className="text-[10px] text-on-surface">Weather Condition: Rain</span>
+                </div>
+              </div>
+              <div className="mt-2 flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${i < 3 ? "bg-error" : "bg-surface-container-high"}`}></div>
+                ))}
+              </div>
+            </div>
+
+            {/* CTECC */}
+            <div className="bg-surface-container-lowest rounded-xl p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-on-surface-variant text-base">corporate_fare</span>
+                  <span className="text-[10px] font-bold text-on-surface-variant uppercase">CTECC</span>
+                </div>
+              </div>
+              <p className="text-[9px] text-on-surface-variant mb-2">Last update: 00:02 · Event ID: TC-21</p>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-on-surface">Medical Department</span>
+                  <span className="px-2 py-0.5 bg-surface-container-high text-on-surface-variant text-[9px] font-bold rounded">In Progress</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] text-on-surface">Police Department</span>
+                  <span className="px-2 py-0.5 bg-primary text-white text-[9px] font-bold rounded">Dispatched</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Live Video Feed */}
+          <div className="px-4 pb-3">
+            <div className="bg-surface-container-lowest rounded-xl overflow-hidden">
+              <div className="relative h-36 bg-slate-900">
+                <img
+                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbuoLeNYnnqiAmzOxu8enM5UXNHhQe4EWbzM5FPoQ4jc3MpxRMdTLxoy4HUohnCwqtmoTM3UuFnHIjQZ1pgYkic9IHboqicYJcDD7wTmPhgRq5eP1f4ZPTPSAuinfDeIv1JFAs2WYCrsdCmbkipgUcLO7EJ7tTRUjErLW9aZYWr8GQEIMOBFVJ5sDKAwrz-EghzFxdF7wICxIgW0tXS5RG7emhROOwvJJX5qFCEdBcRKg9k8aOB6scC49Vq0fVovBTaxqnxqCW_1nh"
+                  alt="Live feed"
+                  className="w-full h-full object-cover opacity-90"
+                />
+                <div className="absolute top-2 left-2 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                  <span className="text-[9px] font-bold text-white uppercase">LIVE · CAM-R42 · East 7th Ave</span>
+                </div>
+                <div className="absolute bottom-2 left-2">
+                  <span className="text-[9px] font-bold text-white/70">TIMESTAMP: 2024-05-20 22:14:08</span>
+                </div>
+              </div>
+              <div className="p-3">
+                <p className="text-[10px] font-bold text-on-surface-variant uppercase">Live Video Feed</p>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Copilot */}
+          <AICopilot />
+        </div>
+      </div>
     </main>
+  );
+}
+
+function AICopilot() {
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
+    { role: "assistant", content: "I recommend re-timing the signals at 7th and Comal. A 'Smart Diversion' on Line 7 is also available." },
+  ]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const send = async () => {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim();
+    setInput("");
+    setMessages((p) => [...p, { role: "user", content: userMsg }]);
+    setLoading(true);
+
+    try {
+      const res = await fetch("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: [...messages, { role: "user", content: userMsg }] }),
+      });
+
+      const reader = res.body?.getReader();
+      const decoder = new TextDecoder();
+      let assistantMsg = "";
+      setMessages((p) => [...p, { role: "assistant", content: "" }]);
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value);
+          const lines = chunk.split("\n").filter((l) => l.startsWith("data: "));
+          for (const line of lines) {
+            const data = line.slice(6);
+            if (data === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(data);
+              const delta = parsed.choices?.[0]?.delta?.content || "";
+              assistantMsg += delta;
+              setMessages((p) => {
+                const updated = [...p];
+                updated[updated.length - 1] = { role: "assistant", content: assistantMsg };
+                return updated;
+              });
+            } catch {
+              // skip malformed
+            }
+          }
+        }
+      }
+    } catch {
+      setMessages((p) => [...p, { role: "assistant", content: "Connection error. Please try again." }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="px-4 pb-4 flex-1 flex flex-col">
+      <div className="bg-surface-container-lowest rounded-xl flex flex-col flex-1">
+        <div className="flex items-center gap-2 px-4 pt-4 pb-2">
+          <div className="w-6 h-6 rounded bg-secondary-container flex items-center justify-center">
+            <span className="material-symbols-outlined text-[14px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+          </div>
+          <span className="text-xs font-bold text-on-surface">AI Copilot</span>
+        </div>
+        <div className="px-4 pb-2 space-y-2 max-h-36 overflow-y-auto">
+          {messages.map((m, i) => (
+            <div key={i} className={`text-xs rounded-lg px-3 py-2 ${m.role === "user" ? "bg-primary-container/20 text-on-surface ml-4" : "bg-surface text-on-surface-variant"}`}>
+              {m.content || <span className="animate-pulse">▍</span>}
+            </div>
+          ))}
+        </div>
+        <div className="px-3 pb-3 mt-auto">
+          <div className="flex items-center gap-2 bg-surface rounded-lg border border-outline-variant/20 px-3 py-2">
+            <input
+              className="flex-1 text-xs bg-transparent outline-none placeholder:text-on-surface-variant/50"
+              placeholder="Ask Copilot: Suggest diversion routes, optimize signals..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && send()}
+            />
+            <button onClick={send} disabled={loading} className="p-1 text-primary hover:bg-primary/10 rounded transition-colors">
+              <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>send</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

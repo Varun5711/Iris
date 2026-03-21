@@ -15,7 +15,7 @@ const navItems = [
   { name: "Live Map", href: "/map", icon: "map" },
   { name: "Analytics", href: "/analytics", icon: "analytics" },
   { name: "IRIS Assistant", href: "/assistant", icon: "smart_toy" },
-  { name: "Logs", href: "/logs", icon: "history" },
+  { name: "Logs", href: "/ui_logs", icon: "history" },
   { name: "Camera Feeds", href: "/camera", icon: "videocam" },
   { name: "Settings", href: "/settings", icon: "settings" },
 ];

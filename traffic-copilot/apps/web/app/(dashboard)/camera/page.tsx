@@ -1,223 +1,314 @@
+"use client";
+
+import { useState, useEffect } from "react";
+
+interface Camera {
+  id: string;
+  label: string;
+  location: string;
+  status: "live" | "offline" | "recording";
+  img: string;
+  fps: number;
+  bitrate: string;
+  detections: number;
+  temp: number;
+  uptime: string;
+  lat: number;
+  lng: number;
+}
+
+const CAMERAS: Camera[] = [
+  {
+    id: "CAM-042",
+    label: "5th Ave & Broadway",
+    location: "Central District",
+    status: "live",
+    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDbuoLeNYnnqiAmzOxu8enM5UXNHhQe4EWbzM5FPoQ4jc3MpxRMdTLxoy4HUohnCwqtmoTM3UuFnHIjQZ1pgYkic9IHboqicYJcDD7wTmPhgRq5eP1f4ZPTPSAuinfDeIv1JFAs2WYCrsdCmbkipgUcLO7EJ7tTRUjErLW9aZYWr8GQEIMOBFVJ5sDKAwrz-EghzFxdF7wICxIgW0tXS5RG7emhROOwvJJX5qFCEdBcRKg9k8aOB6scC49Vq0fVovBTaxqnxqCW_1nh",
+    fps: 30,
+    bitrate: "12.4 MB/s",
+    detections: 14,
+    temp: 42,
+    uptime: "142d 12h",
+    lat: 40.7529,
+    lng: -73.9773,
+  },
+  {
+    id: "CAM-018",
+    label: "West End Terminal",
+    location: "West District",
+    status: "live",
+    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBjrcWz1ciK19wjz9z9v4nIDZzJM4ED-US14E2LXyaqRsViP8YFm6kfHoHwTQZn_qvzV9VhEiGizU5xRzC3tXaC_43Y2O_WlFodK1XzE-ydKEVj82gSZmdZEBJ5ClHkJ-IBpC5sMZaabZ7P9G8KzKRoRAxpFJyQmL7Xate_XxQoGlxWOjLStCJavLt5XFptHxZWii87GixVMq3GJcP0t3EXjjBX7Qa86JjvWE_Kt9hZCoPK2ghxZIKFVYuBXe_r2_8mTyom00AofP6C",
+    fps: 24,
+    bitrate: "9.1 MB/s",
+    detections: 7,
+    temp: 38,
+    uptime: "98d 4h",
+    lat: 40.7440,
+    lng: -74.0021,
+  },
+  {
+    id: "CAM-031",
+    label: "Northern Gate Overpass",
+    location: "North Gateway",
+    status: "recording",
+    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDbuoLeNYnnqiAmzOxu8enM5UXNHhQe4EWbzM5FPoQ4jc3MpxRMdTLxoy4HUohnCwqtmoTM3UuFnHIjQZ1pgYkic9IHboqicYJcDD7wTmPhgRq5eP1f4ZPTPSAuinfDeIv1JFAs2WYCrsdCmbkipgUcLO7EJ7tTRUjErLW9aZYWr8GQEIMOBFVJ5sDKAwrz-EghzFxdF7wICxIgW0tXS5RG7emhROOwvJJX5qFCEdBcRKg9k8aOB6scC49Vq0fVovBTaxqnxqCW_1nh",
+    fps: 30,
+    bitrate: "14.2 MB/s",
+    detections: 22,
+    temp: 45,
+    uptime: "60d 18h",
+    lat: 40.7690,
+    lng: -73.9640,
+  },
+  {
+    id: "CAM-057",
+    label: "South Parkway Bridge",
+    location: "South District",
+    status: "offline",
+    img: "https://lh3.googleusercontent.com/aida-public/AB6AXuBjrcWz1ciK19wjz9z9v4nIDZzJM4ED-US14E2LXyaqRsViP8YFm6kfHoHwTQZn_qvzV9VhEiGizU5xRzC3tXaC_43Y2O_WlFodK1XzE-ydKEVj82gSZmdZEBJ5ClHkJ-IBpC5sMZaabZ7P9G8KzKRoRAxpFJyQmL7Xate_XxQoGlxWOjLStCJavLt5XFptHxZWii87GixVMq3GJcP0t3EXjjBX7Qa86JjvWE_Kt9hZCoPK2ghxZIKFVYuBXe_r2_8mTyom00AofP6C",
+    fps: 0,
+    bitrate: "0 MB/s",
+    detections: 0,
+    temp: 0,
+    uptime: "Offline",
+    lat: 40.7380,
+    lng: -73.9900,
+  },
+];
+
+function now() { return new Date().toUTCString().split(" ").slice(1, 5).join(" "); }
+
 export default function CameraFeedsPage() {
+  const [selectedId, setSelectedId] = useState("CAM-042");
+  const [timestamp, setTimestamp] = useState(now());
+  const [detections, setDetections] = useState(14);
+
+  const cam = CAMERAS.find((c) => c.id === selectedId)!;
+
+  useEffect(() => {
+    const iv = setInterval(() => {
+      setTimestamp(now());
+      setDetections((d) => Math.max(0, d + Math.floor(Math.random() * 5 - 2)));
+    }, 3000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    setDetections(cam.detections);
+  }, [selectedId, cam.detections]);
+
+  const statusColors: Record<string, string> = {
+    live: "bg-red-500",
+    recording: "bg-[#EAB308]",
+    offline: "bg-outline-variant",
+  };
+
   return (
-    <main className="min-h-screen bg-surface p-8 pt-24 space-y-8">
-      {/* Header Section */}
-      <div className="flex justify-between items-end">
+    <main className="min-h-screen bg-surface p-8 pt-24">
+      <div className="flex justify-between items-end mb-8">
         <div>
           <h2 className="text-3xl font-bold tracking-tight text-on-surface">Camera Feeds</h2>
           <p className="text-on-surface-variant mt-1">Real-time surveillance monitoring for Central District traffic flow.</p>
         </div>
         <div className="flex gap-2">
-          <button className="bg-surface-container-lowest text-primary px-4 py-2 rounded-full text-sm font-semibold transition-all hover:bg-surface-container-low flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">grid_view</span>
-            Multiview
+          <button className="px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-full flex items-center gap-2 transition-colors">
+            <span className="material-symbols-outlined text-sm">download</span> Export
           </button>
-          <button className="signature-gradient text-white px-6 py-2 rounded-full text-sm font-semibold shadow-sm hover:brightness-105 transition-all flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">add_circle</span>
-            Link New Camera
+          <button className="px-5 py-2 text-sm font-semibold text-white signature-gradient rounded-full shadow-md hover:brightness-110">
+            Add Camera
           </button>
         </div>
       </div>
 
-      {/* Main Layout: Asymmetric Bento Grid */}
       <div className="grid grid-cols-12 gap-6">
-        {/* Primary Video Feed (Large) */}
-        <div className="col-span-12 lg:col-span-8 space-y-4">
-          <div className="relative aspect-video rounded-xl overflow-hidden bg-surface-container-highest shadow-sm group">
-            <img
-              alt="Camera Feed Live"
-              className="w-full h-full object-cover"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyh_XEwyiA4d7CocMTyXl_y9JZXXLkH_NwOtvSnXTnGOtIuV4q-NecVZykJQdKARUxjtKCDAuxTwtoL3rrWQx6pdGAT22nfFHBgD3v4PM8g6utsT0-jmnFfsBVcFy3jiqXeHO-KjA3rFoRh7W5dcMX0xltsDFTt7_lSmEgQjP1t7YcAOWsWOwJaeXS1xpnPltZl-VlncSsH8dR9UDVzP_xkiOKPAS4VawYIScLt9h-d5hh4Oii9QZCJunBM6vXGwz093w5kwbmbMh_"
-            />
-            {/* Overlay: Top Bar */}
-            <div className="absolute top-0 left-0 right-0 p-6 flex justify-between items-start bg-gradient-to-b from-black/50 to-transparent">
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                  <span className="bg-red-600 w-2 h-2 rounded-full animate-pulse"></span>
-                  <span className="text-white font-bold text-lg tracking-tight">CAM-0428-NW</span>
-                  <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-bold uppercase tracking-widest">LIVE</span>
-                </div>
-                <span className="text-white/80 text-sm">Northwest Interchange • Central District</span>
+        {/* Main Feed */}
+        <div className="col-span-12 lg:col-span-9 space-y-6">
+          {/* Primary Video */}
+          <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video">
+            {cam.status === "offline" ? (
+              <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-surface-container-low">
+                <span className="material-symbols-outlined text-6xl text-on-surface-variant/40">videocam_off</span>
+                <p className="font-bold text-on-surface-variant">Camera Offline</p>
+                <p className="text-sm text-on-surface-variant/70">Connection lost · Technician dispatched</p>
               </div>
-              <div className="flex items-center gap-3">
-                <div className="bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-xs font-mono">
-                  2023-11-24 14:32:08 UTC
+            ) : (
+              <img src={cam.img} alt={cam.label} className="w-full h-full object-cover opacity-90" />
+            )}
+
+            {cam.status !== "offline" && (
+              <>
+                {/* Top overlay */}
+                <div className="absolute top-4 left-4 flex items-center gap-3">
+                  <span className={`w-2.5 h-2.5 rounded-full ${statusColors[cam.status]} animate-pulse`}></span>
+                  <span className="text-xs font-bold text-white uppercase tracking-tighter drop-shadow">
+                    {cam.status === "live" ? "LIVE" : "REC"} · {cam.id}
+                  </span>
                 </div>
-                <button className="bg-white/20 backdrop-blur-md p-2 rounded-lg text-white hover:bg-white/40 transition-colors">
-                  <span className="material-symbols-outlined">fullscreen</span>
-                </button>
+
+                {/* Top right: timestamp */}
+                <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                  <p className="text-[10px] font-bold text-white/90 font-mono">{timestamp}</p>
+                </div>
+
+                {/* Bottom overlay */}
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <h3 className="text-lg font-bold text-white">{cam.label}</h3>
+                      <p className="text-sm text-white/70">{cam.location} · {cam.fps} FPS · {cam.bitrate}</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors text-white">
+                        <span className="material-symbols-outlined text-sm">fullscreen</span>
+                      </button>
+                      <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors text-white">
+                        <span className="material-symbols-outlined text-sm">fiber_manual_record</span>
+                      </button>
+                      <button className="p-2 bg-white/20 backdrop-blur-sm rounded-lg hover:bg-white/30 transition-colors text-white">
+                        <span className="material-symbols-outlined text-sm">photo_camera</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Telemetry Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-primary-container/20 rounded-lg">
+                  <span className="material-symbols-outlined text-primary text-lg">directions_car</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase">Object Detection</p>
+                  <p className="text-2xl font-bold text-on-surface">{detections}</p>
+                </div>
+              </div>
+              <p className="text-xs text-on-surface-variant">Vehicles in frame right now</p>
+              <div className="mt-3 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${Math.min(100, (detections / 30) * 100)}%` }}></div>
               </div>
             </div>
-            {/* Overlay: Telemetry Bottom */}
-            <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-              <div className="flex gap-4">
-                <div className="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
-                  <p className="text-[10px] uppercase text-white/60 mb-1">Bitrate</p>
-                  <p className="text-sm font-bold font-mono">4.2 Mbps</p>
+
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-secondary-container rounded-lg">
+                  <span className="material-symbols-outlined text-on-secondary-container text-lg">thermostat</span>
                 </div>
-                <div className="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
-                  <p className="text-[10px] uppercase text-white/60 mb-1">Frame Rate</p>
-                  <p className="text-sm font-bold font-mono">60 FPS</p>
-                </div>
-                <div className="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
-                  <p className="text-[10px] uppercase text-white/60 mb-1">Latency</p>
-                  <p className="text-sm font-bold font-mono">18ms</p>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase">Hardware Health</p>
+                  <p className="text-2xl font-bold text-on-surface">{cam.temp > 0 ? `${cam.temp}°C` : "—"}</p>
                 </div>
               </div>
-              <div className="flex gap-2">
-                <button className="bg-white p-3 rounded-full text-primary shadow-lg hover:scale-105 transition-transform">
-                  <span className="material-symbols-outlined">videocam</span>
-                </button>
-                <button className="bg-white p-3 rounded-full text-primary shadow-lg hover:scale-105 transition-transform">
-                  <span className="material-symbols-outlined">mic</span>
-                </button>
-                <button className="bg-error p-3 rounded-full text-white shadow-lg hover:scale-105 transition-transform">
-                  <span className="material-symbols-outlined">emergency</span>
-                </button>
+              <p className="text-xs text-on-surface-variant">Operating {cam.temp < 50 ? "within" : "above"} normal range</p>
+              <div className="mt-3 h-1.5 bg-surface-container rounded-full overflow-hidden">
+                <div className={`h-full rounded-full ${cam.temp > 50 ? "bg-error" : "bg-primary"}`} style={{ width: cam.temp > 0 ? `${(cam.temp / 80) * 100}%` : "0%" }}></div>
+              </div>
+            </div>
+
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2 bg-tertiary-container/20 rounded-lg">
+                  <span className="material-symbols-outlined text-tertiary text-lg">timer</span>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-on-surface-variant uppercase">Uptime</p>
+                  <p className="text-2xl font-bold text-on-surface">{cam.uptime}</p>
+                </div>
+              </div>
+              <p className="text-xs text-on-surface-variant">Continuous operation</p>
+              <div className="mt-3 flex gap-1">
+                {[...Array(7)].map((_, i) => (
+                  <div key={i} className={`h-1.5 flex-1 rounded-full ${cam.status !== "offline" ? "bg-primary" : "bg-surface-container-high"}`}></div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Telemetry Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-secondary-container text-primary">
-                  <span className="material-symbols-outlined text-lg">radar</span>
-                </div>
-                <span className="font-bold text-sm text-on-surface">Object Detection</span>
-              </div>
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs">
-                  <span className="text-on-surface-variant">Vehicles</span>
-                  <span className="font-bold text-on-surface">42</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-on-surface-variant">Pedestrians</span>
-                  <span className="font-bold text-on-surface">12</span>
-                </div>
-                <div className="w-full bg-surface-container h-1 rounded-full mt-2">
-                  <div className="bg-primary w-[65%] h-full rounded-full"></div>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-secondary-container text-primary">
-                  <span className="material-symbols-outlined text-lg">thermostat</span>
-                </div>
-                <span className="font-bold text-sm text-on-surface">Hardware Health</span>
-              </div>
-              <div className="flex items-end justify-between">
-                <span className="text-2xl font-bold text-on-surface">42°C</span>
-                <span className="text-[10px] text-primary font-bold bg-secondary-container px-2 py-0.5 rounded">OPTIMAL</span>
-              </div>
-              <p className="text-[10px] text-on-surface-variant mt-2">CPU Usage: 14% • RAM: 2.1GB</p>
-            </div>
-
-            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="p-2 rounded-lg bg-secondary-container text-primary">
-                  <span className="material-symbols-outlined text-lg">history</span>
-                </div>
-                <span className="font-bold text-sm text-on-surface">Uptime</span>
-              </div>
-              <span className="text-2xl font-bold text-on-surface">142d 12h</span>
-              <p className="text-[10px] text-on-surface-variant mt-2">Last restart: 4 months ago</p>
+          {/* All camera grid thumbnails */}
+          <div>
+            <h4 className="font-bold text-sm text-on-surface mb-4">All Camera Feeds</h4>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {CAMERAS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedId(c.id)}
+                  className={`relative rounded-xl overflow-hidden aspect-video group border-2 transition-all ${selectedId === c.id ? "border-primary shadow-lg" : "border-transparent hover:border-primary/30"}`}
+                >
+                  <img src={c.img} alt={c.label} className={`w-full h-full object-cover transition-all ${c.status === "offline" ? "grayscale opacity-50" : "group-hover:scale-105"}`} />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                  <div className="absolute top-2 left-2 flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${statusColors[c.status]} ${c.status !== "offline" ? "animate-pulse" : ""}`}></span>
+                  </div>
+                  <div className="absolute bottom-2 left-2">
+                    <p className="text-[9px] font-bold text-white">{c.id}</p>
+                    <p className="text-[8px] text-white/70">{c.location}</p>
+                  </div>
+                </button>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Sidebar: Selector & Map */}
-        <div className="col-span-12 lg:col-span-4 space-y-6">
-          {/* Mini Map Card */}
-          <div className="bg-surface-container-lowest rounded-xl p-2 shadow-sm relative overflow-hidden h-48">
-            <img
-              alt="Map Location"
-              className="w-full h-full object-cover rounded-lg"
-              src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxV1oWNYeng0W0vpv3qhTBfwiGklmkVvtIbHMvLbzz7vm1tQVLY-vQGcR6d3jI3ZsDKSxZasD12D6qdN4h55UJ0ZaYLHBwRfLeGc2Ft4AC1wfEbEvvtFrTbgpyGNRRqevZgbvTQkfyhc0bx1fe5xy5d1_7gxVxHhiCXNfQnsZhX2v_LxcLJ31mv2hM-gau1TwSl-evdn2-XmLgFUNVQEpkUolXPr-jX9cSSmK-0U2QIsBs2HkHuCAessYaEoGvP42QKKim52tqicfq"
-            />
-            <div className="absolute inset-0 bg-primary/5 pointer-events-none rounded-lg"></div>
-            <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-sm text-primary">location_on</span>
-                <span className="text-xs font-bold text-on-surface">47.6062° N, 122.3321° W</span>
-              </div>
+        {/* Sidebar */}
+        <div className="col-span-12 lg:col-span-3 space-y-6">
+          {/* Selected Camera Info */}
+          <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+            <h4 className="font-bold text-sm text-on-surface mb-4">Camera Details</h4>
+            <div className="space-y-3">
+              {[
+                { label: "Camera ID", value: cam.id },
+                { label: "Location", value: cam.label },
+                { label: "District", value: cam.location },
+                { label: "Status", value: cam.status.toUpperCase() },
+                { label: "Frame Rate", value: `${cam.fps} FPS` },
+                { label: "Bitrate", value: cam.bitrate },
+                { label: "Uptime", value: cam.uptime },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between text-xs">
+                  <span className="text-on-surface-variant font-bold uppercase">{label}</span>
+                  <span className={`font-semibold ${label === "Status" ? (cam.status === "offline" ? "text-error" : "text-primary") : "text-on-surface"}`}>{value}</span>
+                </div>
+              ))}
             </div>
           </div>
 
-          {/* Camera Selector List */}
-          <div className="bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
-            <div className="p-5 border-b border-surface-container flex justify-between items-center">
-              <h3 className="font-bold text-sm text-on-surface">Nearby Cameras</h3>
-              <button className="text-primary text-xs font-semibold">View All</button>
-            </div>
-            <div className="p-2 space-y-1">
-              {/* Active Item */}
-              <div className="flex items-center gap-3 p-3 bg-secondary-container/30 rounded-lg border-l-4 border-primary">
-                <div className="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
-                  <img
-                    alt="CAM-0428"
-                    className="w-full h-full object-cover"
-                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuALudZnI7Bw3U8rh7Ln_1StbBx_0EEGgCy8a2qcIEsxoNJMVPdvfjyxA7nvDRIV6OJOEhaAPTlA2d2Ka9RgSXtFXVVH0G-JYbWxEUed3m-_zphceVoIkHuj3MpfEGcuQJS8cxbPCwX8AA6_TV4TVbdxrGhOanCceEPABIwaYDGr4lL5-YxPDNUTbWdkTsj51TjaUpN31BPR7uvhE5-Rvl2q7o2i9MPVZcI4-2Z7AQ8tZQuJOXoqvuwHWwZzkZf-rfY0O5bhxqlPx7"
-                  />
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-bold truncate text-primary">CAM-0428-NW (Active)</p>
-                  <p className="text-[10px] text-on-surface-variant truncate">Northwest Interchange</p>
-                </div>
-                <span className="material-symbols-outlined text-primary text-sm">radio_button_checked</span>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
-                <div className="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
-                  <img alt="CAM-0912" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtXBx50Kmi_1HdooPkwqGhqP2PBRnZ9qllAkHfguOllPa3mm3QltBVJsHXEJ-EAn72LnP9sIhEDNQJTI1esu0NhZ1pc-yTC2Dh40660owKxTRq2qDA-Ymr78qDYmQ6tRP6QdxiyJO1oNPTDv2oVQvQbzU8jqDUBPjq5fG_HYfaoW3XzKlUA6RGbtCvL8in9dWQwFkAr27NCvfwdrlJOJUKG2FEOFByzPNsp4E1-db3gn6dTZ-SOft3NFwMtUMZx44HjkrnS2XGpwYx" />
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-bold truncate text-on-surface">CAM-0912-ST</p>
-                  <p className="text-[10px] text-on-surface-variant truncate">South Station Crossing</p>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant/30 text-sm group-hover:text-primary transition-colors">play_circle</span>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
-                <div className="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
-                  <img alt="CAM-0115" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCruXZJLSXPc1rgquYO8M3tMrjPRxChlz3Uraq7nq4fz3Gid04O2fBfjyFVKYkXndcgtjJqBDs8rscPhZUU2y75DG30h_K6CGautF8qqud0y1xU1DG0UFMSVQKhea_rqCOCYoyZuqmKZiYtbUT0YohVnD8Ytx3PmERE39XigetnqUXvkq7NJMp2PsGlSRJYq5-e_0H_olqg4K4ivmQ0-8i9Kp7v7DGYFNPjGxtLfbwQPIEB4EXDWsh59Ms1BG5YB9ieg2vcfNOlr8kq" />
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-bold truncate text-on-surface">CAM-0115-BR</p>
-                  <p className="text-[10px] text-on-surface-variant truncate">Harbor Bridge East</p>
-                </div>
-                <div className="px-2 py-0.5 rounded bg-error-container text-on-error-container text-[8px] font-bold">ALARM</div>
-              </div>
-
-              <div className="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
-                <div className="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
-                  <img alt="CAM-0722" className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-opacity" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE7GnvH1iFGyyfxQQ994G603e9C_WTJmm36u1gIz9vw9aoavVObGU9Iy6D0n3AD4YYYW5zl4ObwOVLJrpxsEwxu44TefU9QondRxw4xmbEv5WpzbKKKCZzt3rY3mGNkrIyW554eUHuOEmmEnqTsdlucaK0BXLMHtpY24XLBY8OwfAygxniDFAltnp5BWlIpjOSMlOoXZL2QDoUbWu6Jcyb9W-vdvRdLgbcjuCLV_fe417vhsIzlcse4yA2mrwl7lGT2nCPtdQye_bt" />
-                </div>
-                <div className="flex-1 overflow-hidden">
-                  <p className="text-xs font-bold truncate text-on-surface">CAM-0722-TN</p>
-                  <p className="text-[10px] text-on-surface-variant truncate">West Metro Tunnel</p>
-                </div>
-                <span className="material-symbols-outlined text-on-surface-variant/30 text-sm group-hover:text-primary transition-colors">play_circle</span>
-              </div>
+          {/* Camera Selector */}
+          <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm">
+            <h4 className="font-bold text-sm text-on-surface mb-4">Switch Camera</h4>
+            <div className="space-y-2">
+              {CAMERAS.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedId(c.id)}
+                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-all text-left ${selectedId === c.id ? "bg-primary-container/20 border-l-4 border-primary" : "hover:bg-surface-container-low"}`}
+                >
+                  <span className={`w-2 h-2 rounded-full ${statusColors[c.status]} shrink-0`}></span>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-xs font-bold truncate ${selectedId === c.id ? "text-primary" : "text-on-surface"}`}>{c.id}</p>
+                    <p className="text-[10px] text-on-surface-variant truncate">{c.label}</p>
+                  </div>
+                  {c.status === "live" && <span className="text-[8px] font-bold text-error uppercase shrink-0">LIVE</span>}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* IRIS Assistant Suggestion */}
-          <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-secondary-container">
-            <div className="flex items-center gap-3 mb-4">
-              <span className="material-symbols-outlined text-primary">smart_toy</span>
-              <h3 className="font-bold text-sm text-on-surface">IRIS Insight</h3>
+          {/* IRIS Insight */}
+          <div className="bg-surface-container-lowest rounded-xl p-5 shadow-sm border-b-4 border-secondary-container">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded bg-secondary-container flex items-center justify-center">
+                <span className="material-symbols-outlined text-[14px] text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+              </div>
+              <span className="text-xs font-bold text-on-surface">IRIS Camera Insight</span>
             </div>
-            <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-              Based on current traffic volume at{" "}
-              <span className="text-primary font-bold">CAM-0428-NW</span>, I recommend adjusting signal timing at the next intersection to prevent bottlenecking.
+            <p className="text-xs text-on-surface-variant leading-relaxed">
+              {cam.status === "offline"
+                ? "Camera CAM-057 is offline. Backup telemetry active. Tech dispatch scheduled for 09:30."
+                : `Detecting ${detections} vehicles in ${cam.label}. Flow rate ${detections > 15 ? "elevated — monitor closely" : "normal"}. No incidents flagged.`}
             </p>
-            <button className="w-full py-2 bg-secondary-container text-on-secondary-container rounded-lg text-xs font-bold hover:bg-primary-container hover:text-white transition-colors">
-              Apply Optimized Signal
-            </button>
           </div>
         </div>
       </div>

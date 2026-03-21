@@ -1,4 +1,53 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import type { Incident } from "@/lib/types";
+import type { MapMarker } from "@/components/map/MapboxMap";
+
+const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
+
 export default function IncidentsPage() {
+  const [incident, setIncident] = useState<Incident | null>(null);
+  const [actionState, setActionState] = useState<"idle" | "loading" | "approved" | "rejected">("idle");
+  const [actionMsg, setActionMsg] = useState("");
+
+  useEffect(() => {
+    fetch("/api/incidents")
+      .then((r) => r.json())
+      .then((data: Incident[]) => {
+        const critical = data.find((i) => i.severity === "critical") ?? data[0];
+        setIncident(critical);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleAction = async (action: "approve" | "reject") => {
+    if (!incident || actionState === "loading") return;
+    setActionState("loading");
+    try {
+      const res = await fetch(`/api/alerts/${incident.id}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, incidentId: incident.id }),
+      });
+      const data = await res.json();
+      setActionState(action === "approve" ? "approved" : "rejected");
+      setActionMsg(data.message);
+    } catch {
+      setActionState("idle");
+      setActionMsg("Failed to submit. Please try again.");
+    }
+  };
+
+  const markers: MapMarker[] = incident
+    ? [{ id: incident.id, lat: incident.lat, lng: incident.lng, type: "incident", severity: incident.severity, label: incident.id, popup: incident.title }]
+    : [];
+
+  const detectedMinutesAgo = incident
+    ? Math.floor((Date.now() - new Date(incident.detectedAt).getTime()) / 60000)
+    : 0;
+
   return (
     <main className="min-h-screen bg-surface p-8 pt-24 pb-12">
       {/* Page Header */}
@@ -7,20 +56,32 @@ export default function IncidentsPage() {
           <nav className="flex items-center gap-2 text-xs font-medium text-on-surface-variant mb-3">
             <span className="hover:text-primary cursor-pointer transition-colors">Incidents</span>
             <span className="material-symbols-outlined text-[14px]">chevron_right</span>
-            <span className="text-primary font-semibold">INC-8821</span>
+            <span className="text-primary font-semibold">{incident?.id ?? "INC-8821"}</span>
           </nav>
-          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">Major Traffic Congestion: HWY 101 North</h1>
+          <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
+            {incident?.title ?? "Loading..."}
+          </h1>
           <div className="flex flex-wrap items-center gap-4 text-sm">
             <span className="flex items-center gap-1.5 font-semibold text-on-surface">
               <span className="material-symbols-outlined text-sm text-primary">location_on</span>
-              Central District, Sector 4B
+              {incident?.location ?? "—"}
             </span>
             <span className="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
             <span className="flex items-center gap-1.5 text-on-surface-variant">
               <span className="material-symbols-outlined text-sm">schedule</span>
-              Detected 14m ago (08:42 AM)
+              Detected {detectedMinutesAgo}m ago
             </span>
-            <span className="px-3 py-1 bg-error-container text-on-error-container font-bold rounded-full text-[10px] uppercase tracking-wider">High Severity</span>
+            <span
+              className={`px-3 py-1 font-bold rounded-full text-[10px] uppercase tracking-wider ${
+                incident?.severity === "critical"
+                  ? "bg-error-container text-on-error-container"
+                  : incident?.severity === "high"
+                  ? "bg-[#D97706]/20 text-[#D97706]"
+                  : "bg-tertiary-container/20 text-tertiary"
+              }`}
+            >
+              {incident?.severity ?? "High"} Severity
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -33,63 +94,66 @@ export default function IncidentsPage() {
         </div>
       </div>
 
-      {/* Bento Grid Layout */}
+      {/* Bento Grid */}
       <div className="grid grid-cols-12 gap-6">
-        {/* LEFT: Incident Details & Timeline */}
+        {/* LEFT: Details & Timeline */}
         <div className="col-span-12 lg:col-span-3 space-y-6">
-          {/* Description Card */}
           <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-4">Description</h3>
             <p className="text-sm text-on-surface leading-relaxed mb-6">
-              An unexpected 45% increase in traffic volume detected at the HWY 101 Northbound exit. Secondary congestion forming on Oak St and 5th Ave due to spill-back.
+              {incident?.description ?? "Loading incident data..."}
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="bg-surface p-3 rounded-lg">
                 <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Impact Radius</p>
-                <p className="text-lg font-bold text-on-surface">1.2 km</p>
+                <p className="text-lg font-bold text-on-surface">{incident?.impactRadius ?? "—"}</p>
               </div>
               <div className="bg-surface p-3 rounded-lg">
                 <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Delay Est.</p>
-                <p className="text-lg font-bold text-on-surface">+18m</p>
+                <p className="text-lg font-bold text-on-surface">{incident?.delayEstimate ?? "—"}</p>
               </div>
             </div>
           </div>
 
-          {/* Timeline Card */}
           <div className="bg-surface-container-lowest p-6 rounded-xl shadow-sm">
             <h3 className="text-xs font-bold uppercase tracking-widest text-primary mb-6">Timeline of Events</h3>
             <div className="space-y-6 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container">
               <div className="relative pl-8">
                 <div className="absolute left-0 top-1 w-[24px] h-[24px] bg-white border-4 border-primary rounded-full z-10"></div>
-                <p className="text-[11px] font-bold text-primary uppercase">08:56 AM (Now)</p>
+                <p className="text-[11px] font-bold text-primary uppercase">Now</p>
                 <p className="text-sm font-semibold text-on-surface">Queue length exceeded 800m</p>
               </div>
               <div className="relative pl-8">
                 <div className="absolute left-[6px] top-1.5 w-3 h-3 bg-surface-container rounded-full z-10"></div>
-                <p className="text-[11px] font-bold text-on-surface-variant uppercase">08:48 AM</p>
-                <p className="text-sm text-on-surface-variant">Congestion spillback to Oak Street</p>
+                <p className="text-[11px] font-bold text-on-surface-variant uppercase">-8 min</p>
+                <p className="text-sm text-on-surface-variant">Congestion spillback to side streets</p>
               </div>
               <div className="relative pl-8">
                 <div className="absolute left-[6px] top-1.5 w-3 h-3 bg-surface-container rounded-full z-10"></div>
-                <p className="text-[11px] font-bold text-on-surface-variant uppercase">08:42 AM</p>
-                <p className="text-sm text-on-surface-variant">Initial surge detected at Exit 22</p>
+                <p className="text-[11px] font-bold text-on-surface-variant uppercase">-{detectedMinutesAgo} min</p>
+                <p className="text-sm text-on-surface-variant">Initial surge detected</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* CENTER: Live Map */}
-        <div className="col-span-12 lg:col-span-6 h-[600px] relative rounded-xl overflow-hidden bg-surface-container-low group">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-            style={{
-              backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuBjrcWz1ciK19wjz9z9v4nIDZzJM4ED-US14E2LXyaqRsViP8YFm6kfHoHwTQZn_qvzV9VhEiGizU5xRzC3tXaC_43Y2O_WlFodK1XzE-ydKEVj82gSZmdZEBJ5ClHkJ-IBpC5sMZaabZ7P9G8KzKRoRAxpFJyQmL7Xate_XxQoGlxWOjLStCJavLt5XFptHxZWii87GixVMq3GJcP0t3EXjjBX7Qa86JjvWE_Kt9hZCoPK2ghxZIKFVYuBXe_r2_8mTyom00AofP6C')",
-            }}
-          ></div>
-          <div className="absolute inset-0 bg-black/10"></div>
+        <div className="col-span-12 lg:col-span-6 h-[600px] relative rounded-xl overflow-hidden">
+          {incident ? (
+            <MapboxMap
+              center={[incident.lng, incident.lat]}
+              zoom={15}
+              markers={markers}
+              className="w-full h-full"
+              style="mapbox://styles/mapbox/light-v11"
+            />
+          ) : (
+            <div className="w-full h-full bg-surface-container-low flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-on-surface-variant animate-pulse">map</span>
+            </div>
+          )}
 
-          {/* Map Overlays */}
-          <div className="absolute top-4 left-4 flex flex-col gap-2">
+          <div className="absolute top-4 left-4 flex flex-col gap-2 z-10">
             <div className="bg-white/90 backdrop-blur-md p-3 rounded-lg shadow-xl">
               <p className="text-[10px] font-bold uppercase text-on-surface-variant mb-2">Map Layers</p>
               <div className="flex gap-2">
@@ -106,19 +170,25 @@ export default function IncidentsPage() {
             </div>
           </div>
 
-          <div className="absolute bottom-4 left-4 right-4 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl flex items-center justify-between border border-white">
+          <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl flex items-center justify-between border border-white">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-lg bg-error-container/20 flex items-center justify-center">
                 <span className="material-symbols-outlined text-error" style={{ fontVariationSettings: "'FILL' 1" }}>emergency_share</span>
               </div>
               <div>
-                <p className="text-xs font-bold text-on-surface">Traffic Center HWY 101</p>
-                <p className="text-xs text-on-surface-variant">Intersection Status: <span className="text-error font-bold">Critical Delay</span></p>
+                <p className="text-xs font-bold text-on-surface">{incident?.location ?? "Loading..."}</p>
+                <p className="text-xs text-on-surface-variant">
+                  Status: <span className={`font-bold ${incident?.status === "active" ? "text-error" : "text-primary"}`}>{incident?.status === "active" ? "Critical Delay" : incident?.status ?? "—"}</span>
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-1 rounded">ZOOM: 18x</span>
-              <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-1 rounded">LAT: 34.0522</span>
+              <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-1 rounded">
+                LAT: {incident?.lat.toFixed(4) ?? "—"}
+              </span>
+              <span className="text-[10px] font-bold text-on-surface-variant bg-surface-container px-2 py-1 rounded">
+                LNG: {incident?.lng.toFixed(4) ?? "—"}
+              </span>
             </div>
           </div>
         </div>
@@ -133,7 +203,6 @@ export default function IncidentsPage() {
               <h3 className="text-sm font-bold text-on-surface">IRIS AI Recommendations</h3>
             </div>
             <div className="space-y-6">
-              {/* Recommendation 1 */}
               <div className="p-4 bg-surface rounded-xl border-l-4 border-primary">
                 <p className="text-[10px] font-bold text-primary uppercase mb-1">Signal Strategy</p>
                 <p className="text-sm font-semibold text-on-surface mb-2">Adjust Cycle Pattern A-42</p>
@@ -143,7 +212,6 @@ export default function IncidentsPage() {
                   <span className="text-[10px] text-on-surface-variant">Est. recovery: 12m</span>
                 </div>
               </div>
-              {/* Recommendation 2 */}
               <div className="p-4 bg-surface rounded-xl border-l-4 border-primary">
                 <p className="text-[10px] font-bold text-primary uppercase mb-1">Diversion Route</p>
                 <p className="text-sm font-semibold text-on-surface mb-2">Activate VMS Signs Sector 4</p>
@@ -153,7 +221,6 @@ export default function IncidentsPage() {
                   <span className="text-[10px] text-on-surface-variant">Impact: -20% Vol.</span>
                 </div>
               </div>
-              {/* Confidence Score */}
               <div className="pt-4 border-t border-surface-container">
                 <div className="flex justify-between items-end mb-2">
                   <p className="text-[10px] font-bold text-on-surface-variant uppercase">Confidence Score</p>
@@ -164,42 +231,53 @@ export default function IncidentsPage() {
                 </div>
               </div>
             </div>
+
             {/* Action Buttons */}
-            <div className="grid grid-cols-2 gap-3 mt-8">
-              <button className="py-3 rounded-full bg-white border border-outline-variant/30 text-error font-bold text-sm hover:bg-error/5 transition-colors">
-                Reject
-              </button>
-              <button className="py-3 rounded-full signature-gradient text-white font-bold text-sm shadow-lg active:scale-95 transition-all">
-                Approve
-              </button>
-            </div>
+            {actionState === "idle" || actionState === "loading" ? (
+              <div className="grid grid-cols-2 gap-3 mt-8">
+                <button
+                  onClick={() => handleAction("reject")}
+                  disabled={actionState === "loading"}
+                  className="py-3 rounded-full bg-white border border-outline-variant/30 text-error font-bold text-sm hover:bg-error/5 transition-colors disabled:opacity-50"
+                >
+                  {actionState === "loading" ? "..." : "Reject"}
+                </button>
+                <button
+                  onClick={() => handleAction("approve")}
+                  disabled={actionState === "loading"}
+                  className="py-3 rounded-full signature-gradient text-white font-bold text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50"
+                >
+                  {actionState === "loading" ? "..." : "Approve"}
+                </button>
+              </div>
+            ) : (
+              <div className={`mt-8 p-4 rounded-xl text-sm font-medium text-center ${actionState === "approved" ? "bg-primary-container/20 text-primary" : "bg-error-container/20 text-error"}`}>
+                <span className="material-symbols-outlined text-base align-middle mr-1" style={{ fontVariationSettings: "'FILL' 1" }}>
+                  {actionState === "approved" ? "check_circle" : "cancel"}
+                </span>
+                {actionMsg}
+                <button onClick={() => { setActionState("idle"); setActionMsg(""); }} className="block text-xs mt-2 text-on-surface-variant underline mx-auto">Reset</button>
+              </div>
+            )}
           </div>
 
           {/* Affected Assets */}
           <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
             <h4 className="text-[10px] font-bold uppercase text-on-surface-variant mb-4">Affected Assets</h4>
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-on-surface-variant">traffic</span>
-                  <span className="text-xs font-medium text-on-surface">Signals 101-A, 101-B</span>
+              {[
+                { icon: "traffic", label: "Signals 101-A, 101-B" },
+                { icon: "screenshot_monitor", label: "VMS Panel 04, 05" },
+                { icon: "camera_outdoor", label: "CCTV Cam 22-North" },
+              ].map(({ icon, label }) => (
+                <div key={label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-on-surface-variant">{icon}</span>
+                    <span className="text-xs font-medium text-on-surface">{label}</span>
+                  </div>
+                  <span className="w-2 h-2 rounded-full bg-primary"></span>
                 </div>
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-on-surface-variant">screenshot_monitor</span>
-                  <span className="text-xs font-medium text-on-surface">VMS Panel 04, 05</span>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-lg text-on-surface-variant">camera_outdoor</span>
-                  <span className="text-xs font-medium text-on-surface">CCTV Cam 22-North</span>
-                </div>
-                <span className="w-2 h-2 rounded-full bg-primary"></span>
-              </div>
+              ))}
             </div>
           </div>
         </div>
