@@ -39,10 +39,11 @@ async def get_alerts(
     result = await db.execute(
         text(
             """
-            SELECT id, recommendation_id, channel, draft_text, status, created_at
-            FROM alerts
-            WHERE incident_id = :incident_id
-            ORDER BY created_at DESC
+            SELECT a.id, a.recommendation_id, a.channel, a.draft_text, a.status, a.created_at
+            FROM alerts a
+            JOIN recommendations r ON r.id = a.recommendation_id
+            WHERE r.incident_id = CAST(:incident_id AS uuid)
+            ORDER BY a.created_at DESC
             """
         ),
         {"incident_id": iid},
@@ -180,11 +181,7 @@ async def publish_alert(
     if phone:
         try:
             from src.integrations.twilio.sms import send_sms
-            sms_body = (
-                f"[TrafficCopilot] Incident {incident_id[:8]}:\n"
-                f"[{channel.upper()}] {message[:120]}\n"
-                f"Published by {body.officer_id}"
-            )
+            sms_body = f"TRAFFIC ALERT: {message[:130]}"
             sms_result = await send_sms(phone, sms_body)
         except Exception as exc:
             logger.warning("alerts: SMS send failed (non-fatal)", error=str(exc))
@@ -321,16 +318,11 @@ async def bulk_publish_alerts(
     if phone and published:
         try:
             from src.integrations.twilio.sms import send_sms
-            incident_ids = list({r.message for r in published if r.message})
-            lines = "\n".join(
-                f"{i + 1}. [{r.channel.upper()}] {(r.message or '')[:80]}"
-                for i, r in enumerate(published)
-            )
-            sms_body = (
-                f"[TrafficCopilot] Bulk Alert Publish\n"
-                f"{lines}\n"
-                f"Published by {body.officer_id} ({len(published)} alerts)"
-            )
+            # Pick the most public-facing alert: prefer radio > vms > social
+            priority = {"radio": 0, "vms": 1, "social": 2}
+            best = min(published, key=lambda r: priority.get(r.channel, 9))
+            core = (best.message or "")[:120]
+            sms_body = f"TRAFFIC ALERT: {core}"
             sms_result = await send_sms(phone, sms_body)
         except Exception as exc:
             logger.warning("alerts: bulk SMS failed (non-fatal)", error=str(exc))

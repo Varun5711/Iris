@@ -139,16 +139,23 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         from src.workers.feed_replay import run_feed_replay
 
         replay_dir = settings.replay_scenario_dir
-        replay_interval = settings.replay_interval_seconds
         _spawn(
             run_feed_replay(
                 scenario_dir=replay_dir,
-                interval_seconds=replay_interval,
-                loop=True,
+                interval_seconds=settings.replay_interval_seconds,
+                loop=False,
+                batch_size=settings.replay_batch_size,
+                batch_interval_seconds=settings.replay_batch_interval_seconds,
             ),
             name="feed_replay",
         )
-        log.info("worker_started", worker="feed_replay", scenario=replay_dir)
+        log.info(
+            "worker_started",
+            worker="feed_replay",
+            scenario=replay_dir,
+            batch_size=settings.replay_batch_size,
+            batch_interval=settings.replay_batch_interval_seconds,
+        )
 
     log.info("startup_complete", workers=len(_background_tasks))
 

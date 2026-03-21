@@ -1,0 +1,13 @@
+{
+  "event_id": "b99d460b-73e2-47f1-a747-fcf5418ebe33",
+  "source": "radio",
+  "event_time": "2026-03-21T18:06:14+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "5b13761b-2315-4bd9-a9fa-0aa4f3a49693"
+  },
+  "transcript": "Unit to dispatch — traffic incident at Ashram Road, T cause, response requested",
+  "unit_id": "AMD-UNIT-10"
+}

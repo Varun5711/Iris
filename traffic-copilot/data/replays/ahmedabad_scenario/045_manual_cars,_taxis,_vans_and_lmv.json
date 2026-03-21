@@ -1,0 +1,21 @@
+{
+  "event_id": "5ddd4512-8b2f-42cb-8f4d-894173210c41",
+  "source": "manual",
+  "event_time": "2026-03-21T18:12:04+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Cars, Taxis, Vans and LMV",
+    "total_accidents": 83,
+    "persons_killed": 8,
+    "grievously_injured": 14,
+    "minor_injury": 21,
+    "incident_id": "c7450f60-c2c6-450d-be7a-50594528f714"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Cars, Taxis, Vans and LMV. 83 recorded accidents, 8 fatalities, 14 grievously injured on NH-48 (Delhi-Mumbai Highway) (AMD-NHW-08). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

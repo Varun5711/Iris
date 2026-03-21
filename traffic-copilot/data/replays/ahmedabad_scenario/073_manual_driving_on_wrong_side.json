@@ -1,0 +1,21 @@
+{
+  "event_id": "9e79f5d0-e080-43b2-9ecf-8c24d9f0bb6b",
+  "source": "manual",
+  "event_time": "2026-03-21T18:33:04+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Driving on Wrong side",
+    "total_accidents": 18,
+    "persons_killed": 5,
+    "grievously_injured": 12,
+    "minor_injury": 2,
+    "incident_id": "ca511f7d-d956-4140-8327-c2f5b4a4ff76"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Driving on Wrong side. 18 recorded accidents, 5 fatalities, 12 grievously injured on SP Ring Road (West) (AMD-SPRR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

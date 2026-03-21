@@ -1,0 +1,21 @@
+{
+  "event_id": "a5a73018-445b-4c8a-8af6-a98cc2d4e3b3",
+  "source": "manual",
+  "event_time": "2026-03-21T18:03:04+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Staggered Junction",
+    "total_accidents": 108,
+    "persons_killed": 32,
+    "grievously_injured": 51,
+    "minor_injury": 34,
+    "incident_id": "2f26dff1-5db8-4ab0-aaad-ba8c81ffb44e"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Staggered Junction. 108 recorded accidents, 32 fatalities, 51 grievously injured on CG Road (AMD-CGR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

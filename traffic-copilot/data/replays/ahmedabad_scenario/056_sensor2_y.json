@@ -1,0 +1,15 @@
+{
+  "event_id": "57b81fcf-807c-4192-af31-6992bc619ab9",
+  "source": "sensor",
+  "event_time": "2026-03-21T18:18:19+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0415,
+  "lon": 72.5059,
+  "payload": {
+    "incident_id": "96dbb89e-23b7-4d4b-a06b-edb2e79e2a28"
+  },
+  "segment_id": "AMD-SEG-AMD-SGH-01-002",
+  "speed_kmh": 27.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 72.2
+}

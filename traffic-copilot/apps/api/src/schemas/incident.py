@@ -135,6 +135,29 @@ class VisionAnalysisOut(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class BulkVisionAnalysisOut(BaseModel):
+    """
+    Result returned by POST /incidents/{incident_id}/vision/bulk.
+    """
+
+    incident_id: UUID = Field(..., description="Incident the images were analysed against")
+    total_images: int = Field(..., ge=0, description="Number of images received")
+    processed: int = Field(..., ge=0, description="Number of images successfully analysed")
+    results: list[VisionAnalysisOut] = Field(default_factory=list, description="Per-image analysis results")
+    kafka_published_count: int = Field(
+        default=0,
+        description="Number of CameraMetaEvents published to Kafka (one per detected incident image)",
+    )
+    highest_confidence: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=1.0,
+        description="Highest confidence score across all analysed images",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
 class IncidentSnapshot(BaseModel):
     """
     Enriched read-model combining an incident with its affected road segments

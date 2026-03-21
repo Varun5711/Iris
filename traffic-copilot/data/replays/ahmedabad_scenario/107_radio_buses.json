@@ -1,0 +1,13 @@
+{
+  "event_id": "edec05e5-9f8c-494d-b4c8-b3f8df36b8c8",
+  "source": "radio",
+  "event_time": "2026-03-21T18:57:14+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "5fc64678-fed2-4b72-b79d-8a90f3a1018f"
+  },
+  "transcript": "Unit to dispatch — traffic incident at CG Road, Buses cause, response requested",
+  "unit_id": "AMD-UNIT-27"
+}

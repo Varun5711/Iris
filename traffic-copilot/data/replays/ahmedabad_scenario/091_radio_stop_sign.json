@@ -1,0 +1,13 @@
+{
+  "event_id": "c6ac5184-f48e-4308-a9d9-2b1f47be4b89",
+  "source": "radio",
+  "event_time": "2026-03-21T18:45:14+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "incident_id": "3925156a-6da3-4782-8e0c-5c587a139f7f"
+  },
+  "transcript": "Dispatch unit 6 here — accident at stop sign location, vehicle impact, minor injuries reported, tow truck and first aid needed",
+  "unit_id": "AMD-UNIT-23"
+}

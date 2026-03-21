@@ -1,0 +1,15 @@
+{
+  "event_id": "bea8df02-be5f-485f-b954-a0402740fdbb",
+  "source": "sensor",
+  "event_time": "2026-03-21T18:42:19+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.032,
+  "lon": 72.582,
+  "payload": {
+    "incident_id": "82e0db96-b301-4bd0-800a-64d5b476b880"
+  },
+  "segment_id": "AMD-SEG-AMD-ASH-01-002",
+  "speed_kmh": 27.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 72.2
+}

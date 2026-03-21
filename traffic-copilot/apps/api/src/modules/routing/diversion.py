@@ -145,16 +145,29 @@ def estimate_redistribution(
 def _build_graph_without_edges(
     graph,
     blocked_edges: list[tuple[int, int]],
-) -> nx.MultiDiGraph:
-    """Return a copy of *graph* with all *blocked_edges* removed."""
-    work = graph.copy()
-    for u, v in blocked_edges:
-        if work.has_edge(u, v):
-            work.remove_edge(u, v)
-    return work
+) -> nx.DiGraph:
+    """Return a DiGraph copy of *graph* with all *blocked_edges* removed.
+
+    OSMnx graphs are MultiDiGraph; nx.shortest_simple_paths requires a
+    plain DiGraph.  Parallel edges are collapsed by keeping the one with
+    the smallest travel_time weight.
+    """
+    # Convert MultiDiGraph → DiGraph, keeping min-weight parallel edge.
+    dg = nx.DiGraph()
+    dg.add_nodes_from(graph.nodes(data=True))
+    for u, v, data in graph.edges(data=True):
+        if (u, v) in [(bu, bv) for bu, bv in blocked_edges]:
+            continue
+        weight = data.get(_WEIGHT_ATTR, float("inf"))
+        if dg.has_edge(u, v):
+            if weight < dg[u][v].get(_WEIGHT_ATTR, float("inf")):
+                dg[u][v].update(data)
+        else:
+            dg.add_edge(u, v, **data)
+    return dg
 
 
-def _ensure_weight_attr(graph: nx.MultiDiGraph) -> None:
+def _ensure_weight_attr(graph: nx.DiGraph) -> None:
     """Add a *travel_time* weight to any edge that is missing one.
 
     Computes travel_time = length / speed where speed defaults to 50 km/h.
@@ -170,7 +183,7 @@ def _ensure_weight_attr(graph: nx.MultiDiGraph) -> None:
             data[_WEIGHT_ATTR] = length / speed_ms if speed_ms > 0 else length / _FALLBACK_SPEED_MS
 
 
-def _build_route_dict(path: list[int], graph: nx.MultiDiGraph) -> dict:
+def _build_route_dict(path: list[int], graph: nx.DiGraph) -> dict:
     """Build a route result dict from an ordered list of node IDs."""
     coords: list[tuple[float, float]] = []
     total_distance_m = 0.0
@@ -220,15 +233,19 @@ def _build_route_dict(path: list[int], graph: nx.MultiDiGraph) -> dict:
     }
 
 
-def _get_edge_attrs(graph: nx.MultiDiGraph, u: int, v: int) -> dict[str, Any]:
-    """Return flattened edge attribute dict for the first key of edge u→v."""
+def _get_edge_attrs(graph: nx.DiGraph, u: int, v: int) -> dict[str, Any]:
+    """Return edge attribute dict for edge u→v."""
     try:
         data = graph.get_edge_data(u, v)
         if data is None:
             return {}
+        # DiGraph: data is a plain dict; MultiDiGraph: data is keyed by int
         if isinstance(data, dict):
-            first = next(iter(data.values()), {})
-            return first if isinstance(first, dict) else {}
+            # If values are dicts, it's a MultiDiGraph — take first
+            first = next(iter(data.values()), None)
+            if isinstance(first, dict):
+                return first
+            return data
         return {}
     except Exception:
         return {}

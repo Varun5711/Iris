@@ -1,0 +1,21 @@
+{
+  "event_id": "cde58561-9382-417a-9490-b3b3497688b4",
+  "source": "manual",
+  "event_time": "2026-03-21T18:42:04+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Flashing Signal/Blinker",
+    "total_accidents": 8,
+    "persons_killed": 3,
+    "grievously_injured": 4,
+    "minor_injury": 1,
+    "incident_id": "82e0db96-b301-4bd0-800a-64d5b476b880"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Flashing Signal/Blinker. 8 recorded accidents, 3 fatalities, 4 grievously injured on Ashram Road (AMD-ASH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

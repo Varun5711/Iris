@@ -1,0 +1,15 @@
+{
+  "event_id": "07a6a055-4730-46bd-8a57-1da0bf2b76cd",
+  "source": "sensor",
+  "event_time": "2026-03-21T17:54:09+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "b558dd14-6c2f-45c2-bf61-bf1beb2629ae"
+  },
+  "segment_id": "AMD-SEG-AMD-NHW-08-001",
+  "speed_kmh": 8.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 95.0
+}

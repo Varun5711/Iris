@@ -1,0 +1,13 @@
+{
+  "event_id": "3342bfef-d9de-48cf-95a8-acb7ce7b2554",
+  "source": "radio",
+  "event_time": "2026-03-21T18:39:14+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "c2f3e029-1b15-42be-aa9d-cabfea7ff43e"
+  },
+  "transcript": "Unit to dispatch — traffic incident at CG Road, Ongoing Road Works/Under Construction cause, response requested",
+  "unit_id": "AMD-UNIT-21"
+}

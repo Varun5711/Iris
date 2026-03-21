@@ -1,0 +1,13 @@
+{
+  "event_id": "62559241-8ade-44c2-9c52-3c128545fdd9",
+  "source": "radio",
+  "event_time": "2026-03-21T18:00:14+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "incident_id": "51957eea-97d2-44ab-8910-2061be61ffb2"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SG Highway, Round about Junction cause, response requested",
+  "unit_id": "AMD-UNIT-08"
+}

@@ -1,0 +1,13 @@
+{
+  "event_id": "fa857d26-7704-408f-a5f3-7781d0626bdb",
+  "source": "radio",
+  "event_time": "2026-03-21T18:27:14+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "incident_id": "85211760-4561-40fd-8f4f-bd85f104f132"
+  },
+  "transcript": "Unit 12 to base — crash at police-controlled junction, debris on road, one injury confirmed, requesting backup and medical unit",
+  "unit_id": "AMD-UNIT-17"
+}

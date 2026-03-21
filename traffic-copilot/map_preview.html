@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TrafficCopilot — CG Road Incident Map</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, sans-serif; background: #1a1a2e; color: #eee; }
+    #header {
+      padding: 12px 20px;
+      background: #16213e;
+      border-bottom: 2px solid #ff3333;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    #header h1 { font-size: 16px; font-weight: 700; color: #fff; }
+    .badge {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .badge-critical { background: #ff3333; color: #fff; }
+    .badge-active { background: #22c55e; color: #fff; }
+    #map { height: calc(100vh - 120px); }
+    #legend {
+      padding: 10px 20px;
+      background: #16213e;
+      border-top: 1px solid #333;
+      display: flex;
+      gap: 24px;
+      align-items: center;
+      font-size: 13px;
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .legend-line { width: 24px; height: 4px; border-radius: 2px; }
+    .legend-dash { width: 24px; height: 4px; border-radius: 2px;
+      background: repeating-linear-gradient(90deg, #3399ff 0 8px, transparent 8px 12px); }
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <h1>🚨 TrafficCopilot — Live Incident Map</h1>
+  <span class="badge badge-critical">CRITICAL</span>
+  <span class="badge badge-active">ACTIVE</span>
+  <span style="color:#aaa; font-size:13px;">AMD-CGR-01 · CG Road / Swastik Cross Roads · Ahmedabad</span>
+  <span style="margin-left:auto; color:#aaa; font-size:12px;">Confidence: 92% · 108 segments affected</span>
+</div>
+
+<div id="map"></div>
+
+<div id="legend">
+  <div class="legend-item">
+    <div class="legend-dot" style="background:#ff3333;"></div>
+    <span>Incident Point</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background:#ff6600;"></div>
+    <span>Affected Roads (congested)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dash"></div>
+    <span>Diversion Route (OSM-routed · 4.56 km)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-dot" style="background:#ffdd00;"></div>
+    <span>Signal Actions</span>
+  </div>
+  <span style="margin-left:auto; color:#888; font-size:11px;">
+    Diversion: Swastik → Navrangpura → C.U. Shah College Rd → Usmanpura → Income Tax (+5 min)
+  </span>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map', { zoomControl: true }).setView([23.033, 72.582], 14);
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19,
+  }).addTo(map);
+
+  // Fetch live from API
+  fetch('http://localhost:8000/incidents/d97b950c-4da5-4f18-95f9-65da1d411778/map-data')
+    .then(r => r.json())
+    .then(geojson => {
+      const allBounds = [];
+
+      geojson.features.forEach(feature => {
+        const p = feature.properties;
+        const g = feature.geometry;
+
+        if (p.feature_type === 'incident_point') {
+          const [lon, lat] = g.coordinates;
+          allBounds.push([lat, lon]);
+          L.circleMarker([lat, lon], {
+            radius: 14,
+            fillColor: '#ff3333',
+            color: '#fff',
+            weight: 3,
+            fillOpacity: 0.95,
+          }).addTo(map).bindPopup(`
+            <div style="min-width:220px">
+              <b style="color:#ff3333">⚠ CRITICAL INCIDENT</b><br>
+              <b>${p.corridor_id}</b><br>
+              ${p.description}<br><br>
+              <small>Confidence: ${(p.detection_confidence * 100).toFixed(0)}%</small>
+            </div>
+          `, { maxWidth: 280 });
+        }
+
+        else if (p.feature_type === 'affected_segment') {
+          const coords = g.coordinates.map(c => [c[1], c[0]]);
+          coords.forEach(c => allBounds.push(c));
+          // Color by congestion
+          const pct = p.congestion_pct || 0;
+          const color = pct > 70 ? '#ff2200' : pct > 45 ? '#ff6600' : '#ffaa00';
+          L.polyline(coords, {
+            color,
+            weight: 5,
+            opacity: 0.75,
+          }).addTo(map).bindPopup(`
+            <b>Affected: ${p.road_name || 'OSM Way ' + p.osm_way_id}</b><br>
+            Congestion: ${pct.toFixed(0)}%<br>
+            Delay: +${p.delay_seconds}s
+          `);
+        }
+
+        else if (p.feature_type === 'diversion_route') {
+          const coords = g.coordinates.map(c => [c[1], c[0]]);
+          coords.forEach(c => allBounds.push(c));
+
+          // Draw white outline first (thicker) then blue dashed on top
+          L.polyline(coords, {
+            color: '#ffffff',
+            weight: 8,
+            opacity: 0.4,
+          }).addTo(map);
+
+          L.polyline(coords, {
+            color: '#3399ff',
+            weight: 4,
+            opacity: 0.95,
+            dashArray: '10, 6',
+          }).addTo(map).bindPopup(`
+            <div style="min-width:240px">
+              <b style="color:#3399ff">↗ DIVERSION ROUTE</b><br>
+              ${p.description}<br><br>
+              <b>Via:</b> ${(p.waypoint_names || []).join(' → ')}<br>
+              <b>Roads:</b> ${(p.road_names || []).join(', ') || 'local streets'}<br>
+              <b>Distance:</b> ${(p.distance_m / 1000).toFixed(1)} km<br>
+              <b>Extra time:</b> +${p.estimated_extra_minutes} min<br>
+              <b>Traffic shift:</b> ${p.traffic_redistribution_pct}%<br>
+              <b>Confidence:</b> ${(p.confidence * 100).toFixed(0)}%<br>
+              <b>Source:</b> <code>${p.source}</code> (${p.coordinate_count} road nodes)
+            </div>
+          `, { maxWidth: 300 });
+
+          // Waypoint markers along diversion
+          if (p.waypoint_names) {
+            p.waypoint_names.forEach((name, i) => {
+              // Approximate position along the line
+              const idx = Math.floor((i / (p.waypoint_names.length - 1)) * (coords.length - 1));
+              const pos = coords[idx];
+              L.circleMarker(pos, {
+                radius: 5,
+                fillColor: '#3399ff',
+                color: '#fff',
+                weight: 2,
+                fillOpacity: 1,
+              }).addTo(map).bindPopup(`<b>${name}</b>`);
+            });
+          }
+        }
+
+        else if (p.feature_type === 'signal_action') {
+          const [lon, lat] = g.coordinates;
+          allBounds.push([lat, lon]);
+          L.circleMarker([lat, lon], {
+            radius: 8,
+            fillColor: '#ffdd00',
+            color: '#333',
+            weight: 2,
+            fillOpacity: 0.9,
+          }).addTo(map).bindPopup(`
+            <div style="min-width:200px">
+              <b>🚦 Signal Action</b><br>
+              <b>${p.intersection_id}</b><br>
+              ${p.action}<br><br>
+              <small>Impact: ${p.expected_impact}</small><br>
+              <small>Confidence: ${(p.confidence * 100).toFixed(0)}%</small>
+            </div>
+          `, { maxWidth: 260 });
+        }
+      });
+
+      // Fit map to all features
+      if (allBounds.length) {
+        map.fitBounds(allBounds, { padding: [40, 40] });
+      }
+
+      // Add incident info box
+      const info = L.control({ position: 'topright' });
+      info.onAdd = () => {
+        const div = L.DomUtil.create('div');
+        div.style.cssText = 'background:#16213e;color:#eee;padding:12px 16px;border-radius:6px;border:1px solid #333;font-size:13px;line-height:1.6;min-width:200px;';
+        div.innerHTML = `
+          <b style="color:#ff3333">AMD-CGR-01</b><br>
+          CG Road / Swastik Cross Roads<br>
+          <hr style="border-color:#333;margin:6px 0">
+          Segments affected: <b>${geojson.features.filter(f=>f.properties.feature_type==='affected_segment').length}</b><br>
+          Diversion: <b style="color:#3399ff">4.56 km</b> · +5 min<br>
+          Signal actions: <b>5 intersections</b><br>
+          <hr style="border-color:#333;margin:6px 0">
+          <span style="color:#aaa;font-size:11px">Source: osm_waypoint_routing<br>68 real road nodes</span>
+        `;
+        return div;
+      };
+      info.addTo(map);
+    })
+    .catch(err => {
+      console.error('Failed to load map data:', err);
+      document.getElementById('map').innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#ff4444;font-size:18px">Failed to load — is the API running on localhost:8000?</div>';
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "event_id": "bc8a3960-425d-4c4c-85a1-c26e77833ec5",
+  "source": "radio",
+  "event_time": "2026-03-21T17:39:14+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "incident_id": "e231d959-9053-4923-b715-ee3413573c73"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SP Ring Road (West), Sunny/Clear cause, response requested",
+  "unit_id": "AMD-UNIT-01"
+}

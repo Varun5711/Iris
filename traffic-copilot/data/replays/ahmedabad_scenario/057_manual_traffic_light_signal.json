@@ -1,0 +1,21 @@
+{
+  "event_id": "edd2fcbd-279a-4dfd-b971-5712a85d4fdd",
+  "source": "manual",
+  "event_time": "2026-03-21T18:21:04+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Traffic Light Signal",
+    "total_accidents": 58,
+    "persons_killed": 14,
+    "grievously_injured": 41,
+    "minor_injury": 9,
+    "incident_id": "a8ee89a3-8e50-4a18-88ba-4115caa2406c"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Traffic Light Signal. 58 recorded accidents, 14 fatalities, 41 grievously injured on CG Road (AMD-CGR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

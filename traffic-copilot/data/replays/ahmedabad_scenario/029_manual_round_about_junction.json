@@ -1,0 +1,21 @@
+{
+  "event_id": "d65c41d1-07b6-40b9-a372-c56d655ca59c",
+  "source": "manual",
+  "event_time": "2026-03-21T18:00:04+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Round about Junction",
+    "total_accidents": 121,
+    "persons_killed": 36,
+    "grievously_injured": 42,
+    "minor_injury": 57,
+    "incident_id": "51957eea-97d2-44ab-8910-2061be61ffb2"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Round about Junction. 121 recorded accidents, 36 fatalities, 42 grievously injured on SG Highway (AMD-SGH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

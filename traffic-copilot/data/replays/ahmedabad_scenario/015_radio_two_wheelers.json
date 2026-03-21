@@ -1,0 +1,13 @@
+{
+  "event_id": "554ce754-aeb2-44d1-b688-5571a7ab25e3",
+  "source": "radio",
+  "event_time": "2026-03-21T17:48:14+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "f5010ed7-b85c-4742-9705-e824f2dc1b2f"
+  },
+  "transcript": "Unit to dispatch — traffic incident at Ashram Road, Two Wheelers cause, response requested",
+  "unit_id": "AMD-UNIT-04"
+}

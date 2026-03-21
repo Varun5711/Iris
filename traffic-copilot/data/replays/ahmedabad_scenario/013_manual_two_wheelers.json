@@ -1,0 +1,21 @@
+{
+  "event_id": "60b1053e-c1ec-4da2-977b-d6b9ddce488f",
+  "source": "manual",
+  "event_time": "2026-03-21T17:48:04+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Two Wheelers",
+    "total_accidents": 562,
+    "persons_killed": 146,
+    "grievously_injured": 265,
+    "minor_injury": 141,
+    "incident_id": "f5010ed7-b85c-4742-9705-e824f2dc1b2f"
+  },
+  "severity": "critical",
+  "description": "Traffic Control incident — Two Wheelers. 562 recorded accidents, 146 fatalities, 265 grievously injured on Ashram Road (AMD-ASH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}
