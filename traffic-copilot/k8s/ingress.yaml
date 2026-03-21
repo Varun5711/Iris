@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: trafficcopilot-ingress
+  namespace: trafficcopilot
+  labels:
+    app.kubernetes.io/name: trafficcopilot
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Nginx ingress controller
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+
+    # WebSocket support for /ws paths
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+
+    # Rewrite /api prefix before forwarding to the API service
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+
+    # Enable connection upgrade header passthrough (required for WebSockets)
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+spec:
+  rules:
+    - http:
+        paths:
+          # REST API — strip /api prefix
+          - path: /api(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: trafficcopilot-api
+                port:
+                  number: 8000
+
+          # WebSocket endpoint — forward as-is (no prefix strip)
+          - path: /ws(/|$)(.*)
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: trafficcopilot-api
+                port:
+                  number: 8000

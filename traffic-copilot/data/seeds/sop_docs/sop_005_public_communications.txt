@@ -1,0 +1,48 @@
+STANDARD OPERATING PROCEDURE
+SOP-005: PUBLIC COMMUNICATIONS DURING INCIDENTS
+Traffic Management Center — Version 3.3 | Effective: 2025-04-20
+Review Cycle: Annual | Owner: Communications Unit / Operations Division
+
+PURPOSE
+This procedure governs all public-facing communications issued by or on behalf of the Traffic Management Center during active traffic incidents, including Variable Message Sign (VMS) activation, radio broadcast coordination, social media publishing, and timing requirements.
+
+1. VMS ACTIVATION
+VMS boards are the primary real-time communication channel to drivers already on the network.
+
+a) Activation authority: TMO on duty. No supervisor approval required for standard incident messages using approved templates.
+b) Message content: Use approved message library templates only. Custom messages require Duty Supervisor approval before display.
+c) Character limits: Maximum 3 lines, 8 characters per line on standard boards. Abbreviations must follow the national VMS abbreviation standard (Appendix A).
+d) Timing: First VMS activation must occur within 3 minutes of incident confirmation (Tier 1) or 5 minutes (Tier 2).
+e) Upstream coverage: Activate boards at minimum 2 km, 5 km, and 10 km upstream of the incident point where boards exist.
+f) Message update: Review and update VMS messages every 20 minutes or upon any change in incident status.
+g) Deactivation: Display "ALL CLEAR / DELAYS CLEARING" for minimum 10 minutes before extinguishing. Do not abruptly remove incident messaging.
+
+2. RADIO BROADCAST TRIGGERS
+The TMC maintains agreements with designated broadcast partners for traffic bulletins.
+
+a) Broadcast a traffic bulletin when: incident is Tier 1 or Tier 2, or when expected delay exceeds 20 minutes, or when a diversion has been activated.
+b) Timing: Initial bulletin request must be submitted within 8 minutes of incident confirmation.
+c) Method: Email or API push to broadcast partners' traffic desk. Use the approved radio script template (see Alert Templates Register). Do not ad-lib content.
+d) Update frequency: Reissue updated bulletin every 30 minutes while incident is active, or immediately upon significant status change (e.g., full clearance, lane reopening).
+e) Stand-down: Notify broadcast partners when incident is fully cleared so they can broadcast an all-clear message.
+
+3. SOCIAL MEDIA GUIDELINES
+The TMC's official social media accounts (specified in the Communications Register) may be used for public advisories.
+
+a) Authorised publishers: TMO supervisor or Communications Officer only. Standard TMOs do not have posting authority.
+b) Platform priority: Post to all approved platforms (X/Twitter, Facebook Page, agency website) simultaneously.
+c) Content: Use approved social media templates. Include: incident type, location, expected delay, alternate route recommendation, and update cadence. Do not include personal information, vehicle details, or speculation about causes.
+d) Language: Plain language. Avoid jargon. Maximum 2 hashtags (#TrafficAlert, corridor-specific tag).
+e) First post: Within 10 minutes of incident confirmation for Tier 1 incidents; within 20 minutes for Tier 2.
+f) Update posts: Every 30 minutes while incident is active. Always reply or quote-post the original alert to maintain thread continuity.
+g) Clearance post: Issue a confirmed clearance post within 5 minutes of incident stand-down.
+
+4. TIMING REQUIREMENTS SUMMARY
+VMS activation:         ≤ 3 min (Tier 1), ≤ 5 min (Tier 2)
+Radio bulletin request: ≤ 8 min (Tier 1 & 2)
+Social media post:      ≤ 10 min (Tier 1), ≤ 20 min (Tier 2)
+511 feed update:        ≤ 15 min (via SOP-002 Step 5)
+All-clear messaging:    ≤ 5 min after stand-down (all channels)
+
+5. COMMUNICATIONS LOG
+All public communications must be logged in IMS with channel, content summary, timestamp, and publishing officer. This log is subject to public records requests and must be accurate and complete.

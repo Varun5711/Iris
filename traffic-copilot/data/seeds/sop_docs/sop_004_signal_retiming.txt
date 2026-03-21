@@ -1,0 +1,44 @@
+STANDARD OPERATING PROCEDURE
+SOP-004: EMERGENCY SIGNAL RETIMING
+Traffic Management Center — Version 2.2 | Effective: 2025-02-10
+Review Cycle: Annual | Owner: Signal Plans Team / Operations Division
+
+PURPOSE
+This procedure defines when and how traffic signal timing may be modified in real time to respond to an active incident or abnormal demand condition, and how modified plans are reverted after the incident resolves.
+
+1. WHEN TO RETIME
+Emergency signal retiming is authorised under the following conditions:
+
+a) An active diversion route has been confirmed (see SOP-002) and intersections on the diversion route require additional green time to absorb diverted volumes.
+b) Emergency services have requested signal priority or green wave for a hospital corridor or major arterial approach to an incident scene.
+c) Sensor data shows persistent oversaturation (v/c ratio > 1.0) at one or more signalised intersections on a corridor managed by the TMC.
+d) A special event or planned road closure is causing measurable departure from baseline timing plans, and pre-approved event plans have not been activated.
+e) The Traffic State Engine has flagged a signal plan mismatch lasting more than 8 minutes.
+
+2. APPROVAL PROCESS
+Tier A changes (cycle length adjustment ±15%, phase extension ±20 seconds): TMO on duty may approve and implement directly.
+Tier B changes (new cycle structure, phase resequencing, pedestrian phase suspension): Requires Duty Supervisor approval. Document rationale in IMS before implementation.
+Tier C changes (arterial coordination plan override, full manual control): Requires Signal Plans Engineer sign-off. Contact Signal Plans Engineer via on-call roster. If unavailable, Duty Supervisor may authorise a temporary Tier C change for up to 30 minutes with mandatory log entry.
+
+3. INTERSECTION PRIORITY
+When resources allow, retiming must follow this prioritisation order:
+1. Safety-critical: intersections at diversion entry/exit points.
+2. High-volume: intersections with greatest measured demand imbalance.
+3. Downstream dissipation: intersections where queue release from the cleared incident will arrive first.
+4. Secondary corridors: intersections experiencing measurable spillback from primary incident corridor.
+
+Changes to pedestrian phases must maintain ADA minimum walk/don't-walk intervals at all times unless an explicit emergency waiver is granted by the Duty Supervisor and logged.
+
+4. IMPLEMENTATION STEPS
+a) Identify target intersections using the signal inventory map (available in the SCATS/SCOOT dashboard or equivalent).
+b) Confirm connectivity to the targeted signal controller before modifying any plan.
+c) Apply changes in the Traffic Signal Management System (TSMS); do not override controller locally without TMC awareness.
+d) Notify field units of changed signal behaviour at affected intersections.
+e) Monitor performance for at least 5 minutes after each change; roll back immediately if adverse effects are detected.
+
+5. REVERTING CHANGES
+Upon incident clearance or when abnormal conditions have resolved:
+a) Restore base timing plans within 30 minutes of incident stand-down.
+b) Do not revert all intersections simultaneously; stagger reversion to prevent demand shock.
+c) Log reversion time, restoring officer ID, and confirmation of baseline plan restoration in IMS.
+d) Conduct a post-event review if retiming lasted more than 2 hours; submit findings to Signal Plans Team within 3 working days.

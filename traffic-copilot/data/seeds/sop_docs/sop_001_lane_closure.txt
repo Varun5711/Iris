@@ -1,0 +1,45 @@
+STANDARD OPERATING PROCEDURE
+SOP-001: HIGHWAY LANE CLOSURE
+Traffic Management Center — Version 2.4 | Effective: 2025-01-15
+Review Cycle: Annual | Owner: Operations Division
+
+PURPOSE
+This procedure establishes the criteria and steps for initiating, managing, and clearing lane closures on monitored highway corridors following an incident or planned maintenance event.
+
+1. ASSESSMENT CRITERIA
+Before activating a lane closure, the on-duty Traffic Management Officer (TMO) must confirm at least two of the following conditions:
+
+a) A sensor or camera system reports lane occupancy > 85% on the affected segment for a sustained period of 3+ minutes.
+b) Vehicle speed on the affected segment has fallen below 30 km/h against a free-flow baseline of 80+ km/h.
+c) A field unit or CAD dispatch has reported a physical obstruction or collision in a travel lane.
+d) Camera imagery shows stopped or partially blocking vehicles in one or more lanes.
+e) Radar or LIDAR detectors have flagged an anomalous stationary object in the travel lane.
+
+2. ACTIVATION THRESHOLDS
+Partial closure (one lane blocked): Immediate activation authorised by TMO on duty.
+Full carriageway closure: Requires supervisor approval. Contact Duty Supervisor via radio channel 3 or internal phone extension 201. If supervisor is unreachable within 3 minutes, TMO may act unilaterally when life-safety risk is assessed as imminent.
+
+3. OFFICER RESPONSIBILITIES
+Field Unit on Scene:
+- Position vehicle 50 m upstream of incident with amber lights active.
+- Deploy advance warning signage minimum 200 m upstream.
+- Confirm lane status to TMC via radio within 5 minutes of arrival.
+- Update TMC every 15 minutes or upon change of conditions.
+
+Traffic Management Officer (TMC):
+- Activate VMS boards upstream of closure within 3 minutes of confirmed lane block.
+- Coordinate with signal plans team to extend green phases on diversion routes.
+- Log closure activation in the Incident Management System (IMS) with timestamp.
+- Notify adjacent corridor TMOs of potential spillback.
+
+4. OPENING LANES
+A lane may be reopened only when:
+a) The field unit confirms the obstruction is fully cleared and the lane surface is safe.
+b) Recovery vehicle has departed the scene or is parked fully off the travel lane.
+c) No ongoing emergency services activity requires lane exclusion.
+d) TMO confirms upstream queue is dissipating before removing VMS messaging.
+
+Reopening sequence: field unit confirms → TMO logs clearance → VMS updated to "LANES CLEAR" for minimum 10 minutes → VMS extinguished.
+
+5. DOCUMENTATION
+All closures must be recorded in IMS within 15 minutes of activation. Mandatory fields: corridor ID, lane(s) affected, time of activation, authorising officer, time of clearance. Debrief required within 24 hours for any closure exceeding 90 minutes.

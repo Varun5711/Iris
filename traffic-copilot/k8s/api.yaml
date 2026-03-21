@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: trafficcopilot-api
+  namespace: trafficcopilot
+  labels:
+    app.kubernetes.io/name: trafficcopilot
+    app.kubernetes.io/component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: trafficcopilot-api
+  template:
+    metadata:
+      labels:
+        app: trafficcopilot-api
+        app.kubernetes.io/name: trafficcopilot
+        app.kubernetes.io/component: api
+    spec:
+      containers:
+        - name: api
+          image: trafficcopilot-api:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: trafficcopilot-config
+            - secretRef:
+                name: trafficcopilot-secrets
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 3
+            successThreshold: 1
+            timeoutSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 4
+            timeoutSeconds: 5
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: trafficcopilot-api
+  namespace: trafficcopilot
+  labels:
+    app.kubernetes.io/name: trafficcopilot
+    app.kubernetes.io/component: api
+spec:
+  selector:
+    app: trafficcopilot-api
+  ports:
+    - name: http
+      port: 8000
+      targetPort: 8000
+      protocol: TCP
+  type: ClusterIP

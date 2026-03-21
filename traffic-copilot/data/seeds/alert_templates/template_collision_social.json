@@ -1,0 +1,6 @@
+{
+  "channel": "social",
+  "incident_type": "collision",
+  "template_text": "\ud83d\udea8 TRAFFIC ALERT: [severity] accident on [road] [direction] at [location]. Major delays expected. Use [alternate] as alternate route. Emergency services on scene. Updates to follow. #TrafficAlert",
+  "description": "Social media template for collision incidents"
+}

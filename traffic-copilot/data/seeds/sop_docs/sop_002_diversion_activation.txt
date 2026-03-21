@@ -1,0 +1,42 @@
+STANDARD OPERATING PROCEDURE
+SOP-002: TRAFFIC DIVERSION ROUTE ACTIVATION
+Traffic Management Center — Version 3.1 | Effective: 2025-03-01
+Review Cycle: Annual | Owner: Operations Division
+
+PURPOSE
+This procedure defines the conditions, sequence of actions, and responsibilities for activating a pre-approved diversion route when primary corridor capacity is critically degraded.
+
+1. DIVERSION TRIGGER CONDITIONS
+A diversion route shall be activated when any of the following thresholds are met:
+
+a) Primary corridor speed has dropped below 20 km/h for more than 5 consecutive minutes.
+b) A full carriageway closure has been confirmed (see SOP-001).
+c) Predicted queue length on the primary corridor exceeds 3 km, as estimated by the Traffic State Engine.
+d) Emergency Services have requested corridor clearance for critical response operations.
+e) A structural or safety hazard has been declared by an authorised engineer or field commander.
+
+2. ROUTE ASSESSMENT
+Before activating, the TMO must verify:
+a) The designated diversion route (listed in the Corridor Diversion Register, CDR) is passable — no conflicting closures or known hazards on the alternate.
+b) The diversion route can absorb the expected diverted volume without exceeding Level of Service D. Cross-reference the CDR capacity ratings.
+c) Oversize load or hazardous goods vehicles are assessed separately; standard diversion routes may be unsuitable. Notify freight desk (ext. 205) if applicable.
+d) Confirm with field unit or camera monitoring that diversion entry/exit points are clear and visible.
+
+3. SIGNAL TIMING COORDINATION
+Upon diversion activation, the TMO must immediately:
+a) Request signal retiming on the diversion route from the Signal Plans team (see SOP-004).
+b) Key intersections on the diversion route must have green phase extended by a minimum of 15 seconds for critical approaches within 10 minutes of activation.
+c) Coordinate with the upstream entry intersection to introduce metering if diversion flow exceeds 80% of alternate route capacity.
+d) Monitor diversion route speeds via sensor feed; escalate to Duty Supervisor if secondary congestion develops above Level of Service E.
+
+4. PUBLIC NOTIFICATION SEQUENCE
+Notifications must be issued in the following order and within the stated timeframes:
+
+Step 1 (within 3 minutes): Activate VMS boards on the primary corridor upstream of the closure/incident. Display diversion instruction.
+Step 2 (within 5 minutes): Activate VMS boards at key decision points on feeder roads directing drivers to the diversion route.
+Step 3 (within 8 minutes): Issue radio broadcast to participating stations (see SOP-005).
+Step 4 (within 10 minutes): Publish social media advisory via the approved TMC account (see SOP-005).
+Step 5 (within 15 minutes): Notify the regional 511 travel information service via the automated data feed. Confirm feed update with 511 operator desk if automated feed is unavailable.
+
+5. DEACTIVATION
+Diversion shall be deactivated only after the primary corridor has been confirmed clear, queues have substantially dissipated (speed > 55 km/h on primary segment), and field unit confirms safe conditions. Remove VMS and update 511 within 5 minutes of deactivation. Log all times in IMS.

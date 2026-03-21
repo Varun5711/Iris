@@ -1,0 +1,16 @@
+{
+  "event_id": "11111111-0000-0000-0000-000000000001",
+  "source": "manual",
+  "event_time": "2026-03-21T14:00:00Z",
+  "corridor_id": "I5-SB-42",
+  "lat": 40.7580,
+  "lon": -73.9855,
+  "payload": {
+    "severity": "high",
+    "description": "Multi-vehicle collision, 3 vehicles involved, left lane blocked",
+    "reporter_id": "unit_7"
+  },
+  "severity": "high",
+  "description": "Multi-vehicle collision, 3 vehicles involved, left lane blocked",
+  "reporter_id": "unit_7"
+}
