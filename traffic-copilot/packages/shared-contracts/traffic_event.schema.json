@@ -1,0 +1,275 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://trafficcopilot.io/schemas/traffic_event.schema.json",
+  "title": "TrafficEvent",
+  "description": "A single event ingested by the TrafficCopilot ingest pipeline. May originate from sensors, cameras, manual officer reports, or radio transcripts.",
+  "type": "object",
+  "required": ["event_id", "source", "event_time", "corridor_id", "lat", "lon", "payload"],
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique identifier for this event (UUID v4)."
+    },
+    "source": {
+      "type": "string",
+      "enum": ["sensor", "camera", "manual", "radio", "cad", "waze", "gtfs"],
+      "description": "Data source that produced this event."
+    },
+    "event_time": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of when the event occurred."
+    },
+    "ingested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 UTC timestamp of when the event was received by the ingest pipeline. Set by the server."
+    },
+    "corridor_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "description": "Identifier for the road corridor this event relates to (e.g. I5-SB-42)."
+    },
+    "lat": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 90,
+      "description": "WGS-84 latitude of the event location."
+    },
+    "lon": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180,
+      "description": "WGS-84 longitude of the event location."
+    },
+    "payload": {
+      "type": "object",
+      "description": "Source-specific payload. See oneOf sub-schemas for typed payloads."
+    }
+  },
+  "oneOf": [
+    {
+      "title": "SensorSpeedEvent",
+      "description": "Speed and occupancy reading from a loop detector, radar, or Bluetooth/Wi-Fi sensor.",
+      "properties": {
+        "source": { "const": "sensor" },
+        "segment_id": {
+          "type": "string",
+          "description": "Road segment identifier this sensor is associated with."
+        },
+        "speed_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300,
+          "description": "Space-mean speed of traffic measured at this sensor (km/h)."
+        },
+        "free_flow_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 300,
+          "description": "Free-flow reference speed for this segment (km/h)."
+        },
+        "occupancy_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "description": "Lane occupancy as a percentage of the measurement interval."
+        },
+        "volume_veh_per_hour": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Measured flow rate in vehicles per hour (optional)."
+        }
+      },
+      "required": ["segment_id", "speed_kmh", "free_flow_kmh", "occupancy_pct"]
+    },
+    {
+      "title": "CameraMetaEvent",
+      "description": "Computer vision metadata derived from a CCTV or IP camera feed.",
+      "properties": {
+        "source": { "const": "camera" },
+        "camera_id": {
+          "type": "string",
+          "description": "Unique identifier of the camera device."
+        },
+        "lane_blocked": {
+          "type": "boolean",
+          "description": "Whether the CV model detected a blocked lane."
+        },
+        "vehicle_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of vehicles visible in the camera frame."
+        },
+        "incident_detected": {
+          "type": "boolean",
+          "description": "Whether the CV model detected an anomaly consistent with an incident."
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Model confidence score for incident_detected classification."
+        },
+        "image_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Optional URL to the frame image stored in object storage."
+        }
+      },
+      "required": ["camera_id", "lane_blocked", "incident_detected", "confidence"]
+    },
+    {
+      "title": "ManualIncidentEvent",
+      "description": "Incident manually reported by a field officer or TMC operator.",
+      "properties": {
+        "source": { "const": "manual" },
+        "severity": {
+          "type": "string",
+          "enum": ["low", "medium", "high", "critical"],
+          "description": "Officer-assessed severity of the incident."
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1024,
+          "description": "Free-text incident description."
+        },
+        "reporter_id": {
+          "type": "string",
+          "description": "Unit or badge identifier of the reporting officer."
+        },
+        "vehicle_count_involved": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of vehicles involved, if known."
+        },
+        "injuries_reported": {
+          "type": "boolean",
+          "description": "Whether injuries have been reported."
+        }
+      },
+      "required": ["severity", "description", "reporter_id"]
+    },
+    {
+      "title": "RadioTranscriptEvent",
+      "description": "Transcribed radio communication from a field unit, processed via STT.",
+      "properties": {
+        "source": { "const": "radio" },
+        "transcript": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Full STT transcript of the radio communication."
+        },
+        "unit_id": {
+          "type": "string",
+          "description": "Radio unit identifier of the transmitting officer."
+        },
+        "channel": {
+          "type": "string",
+          "description": "Radio channel the transmission was received on."
+        },
+        "confidence_stt": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "STT transcription confidence score."
+        }
+      },
+      "required": ["transcript", "unit_id"]
+    },
+    {
+      "title": "CADDispatchEvent",
+      "description": "Computer-Aided Dispatch event pushed from the CAD system integration.",
+      "properties": {
+        "source": { "const": "cad" },
+        "cad_incident_id": {
+          "type": "string",
+          "description": "CAD system incident reference number."
+        },
+        "incident_type_code": {
+          "type": "string",
+          "description": "CAD incident type code (e.g. TC1, TC2, FIRE)."
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5,
+          "description": "CAD priority level (1 = highest)."
+        },
+        "units_dispatched": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "List of unit IDs dispatched to the incident."
+        },
+        "narrative": {
+          "type": "string",
+          "maxLength": 2048,
+          "description": "CAD narrative/notes for the incident."
+        }
+      },
+      "required": ["cad_incident_id", "incident_type_code", "priority"]
+    },
+    {
+      "title": "WazeCitizenReportEvent",
+      "description": "Crowdsourced traffic event from the Waze Connected Citizens Programme feed.",
+      "properties": {
+        "source": { "const": "waze" },
+        "waze_uuid": {
+          "type": "string",
+          "description": "Waze-provided UUID for this alert."
+        },
+        "waze_type": {
+          "type": "string",
+          "enum": ["ACCIDENT", "JAM", "WEATHERHAZARD", "HAZARD", "ROAD_CLOSED", "CONSTRUCTION"],
+          "description": "Waze alert type."
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Waze alert subtype (e.g. ACCIDENT_MAJOR, JAM_HEAVY_TRAFFIC)."
+        },
+        "reliability": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10,
+          "description": "Waze reliability score (0–10)."
+        },
+        "report_rating": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of users who confirmed the report."
+        }
+      },
+      "required": ["waze_uuid", "waze_type", "reliability"]
+    },
+    {
+      "title": "GTFSRealtimeEvent",
+      "description": "Transit delay or disruption event from a GTFS-Realtime feed that may affect road network.",
+      "properties": {
+        "source": { "const": "gtfs" },
+        "trip_id": {
+          "type": "string",
+          "description": "GTFS trip_id of the affected transit trip."
+        },
+        "route_id": {
+          "type": "string",
+          "description": "GTFS route_id."
+        },
+        "stop_id": {
+          "type": "string",
+          "description": "GTFS stop_id where the delay is occurring."
+        },
+        "delay_seconds": {
+          "type": "integer",
+          "description": "Current delay in seconds (negative = early)."
+        },
+        "vehicle_id": {
+          "type": "string",
+          "description": "GTFS vehicle label."
+        }
+      },
+      "required": ["trip_id", "route_id", "delay_seconds"]
+    }
+  ]
+}

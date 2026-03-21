@@ -1,0 +1,13 @@
+Extract structured incident information from the following radio transcript.
+
+Transcript: "{transcript}"
+
+Return JSON with these fields:
+- incident_type: string or null ("collision", "breakdown", "debris", "fire", "medical", "other")
+- location_text: the location as described in the transcript, or null
+- severity_hint: "minor", "major", or "critical" based on language, or null
+- lane_info: description of lane blockage if mentioned, or null
+- units_responding: list of unit IDs or callsigns mentioned
+- confidence: float 0.0-1.0 for your extraction confidence
+
+Return ONLY the JSON object.

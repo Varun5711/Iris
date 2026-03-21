@@ -1,0 +1,8 @@
+Summarize the current traffic incident in 2-3 clear sentences for the officer.
+Include: incident type, location, current severity, affected corridor, and how long it has been active.
+Be factual. Only include what is in the context. Do not speculate.
+
+Context:
+{context}
+
+Respond with ONLY the "incident_summary" and "narrative" fields of the CopilotResponse JSON.

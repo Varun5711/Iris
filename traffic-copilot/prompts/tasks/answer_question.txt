@@ -1,0 +1,12 @@
+The traffic control officer asks: "{question}"
+
+Using ONLY the incident context below, answer the question concisely.
+- Cite evidence_refs from the context to support your answer
+- If data is insufficient to answer confidently, say so and set review_required=true
+- Do not speculate beyond available data
+- If this is a safety-related question (opening lanes, clearing incident), reference the relevant SOP if available
+
+Context:
+{context}
+
+Return the "conversational_answer", "evidence_refs", "overall_confidence", and "review_required" fields of the CopilotResponse JSON.
