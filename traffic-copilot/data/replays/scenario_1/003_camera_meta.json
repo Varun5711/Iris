@@ -1,0 +1,14 @@
+{
+  "event_id": "33333333-0000-0000-0000-000000000003",
+  "source": "camera",
+  "event_time": "2026-03-21T14:00:10Z",
+  "corridor_id": "I5-SB-42",
+  "lat": 40.7575,
+  "lon": -73.9852,
+  "payload": {},
+  "camera_id": "CAM-042",
+  "lane_blocked": true,
+  "vehicle_count": 8,
+  "incident_detected": true,
+  "confidence": 0.91
+}

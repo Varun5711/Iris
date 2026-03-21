@@ -1,0 +1,41 @@
+STANDARD OPERATING PROCEDURE
+SOP-003: MAJOR COLLISION RESPONSE
+Traffic Management Center — Version 4.0 | Effective: 2025-06-01
+Review Cycle: Annual | Owner: Operations Division / Emergency Liaison
+
+PURPOSE
+This procedure governs the Traffic Management Center's role in coordinating the immediate and sustained response to a major collision event involving multiple vehicles, injuries, or significant infrastructure impact.
+
+1. IMMEDIATE RESPONSE (0–5 MINUTES)
+Upon notification of a major collision (defined as: 2+ vehicles involved, confirmed or suspected injuries, or one or more lanes blocked):
+
+a) TMO acknowledges incident in IMS and assigns severity tier (1 = critical, 2 = serious, 3 = minor).
+b) Activate nearest upstream VMS boards with "ACCIDENT AHEAD — SLOW DOWN" or equivalent.
+c) Notify Duty Supervisor immediately for Tier 1 and 2 incidents.
+d) Confirm emergency services (Police, Fire, Ambulance) have been dispatched via CAD integration or direct liaison with Emergency Communications (ext. 911 liaison line).
+e) Begin continuous camera monitoring of the incident location and upstream/downstream segments.
+f) Lock affected corridor segments in the Traffic State Engine to prevent automated plan changes.
+
+2. RESOURCE DEPLOYMENT (5–15 MINUTES)
+a) Dispatch a Traffic Incident Response (TIR) vehicle if not already on scene, prioritising arrival within 10 minutes.
+b) Request additional field units if the incident is confirmed Tier 1 (major injury/fatality or multi-lane blockage exceeding 500 m queue).
+c) If heavy recovery is required, contact the on-call towing contractor (details in Operations Contact Register) and confirm ETA.
+d) Position shadow vehicles at the head of the queue (200 m upstream) and at diversion entry points.
+e) Notify utility companies if infrastructure damage is suspected (e.g., barrier strike, fuel spill, overhead line damage).
+
+3. CORRIDOR MANAGEMENT
+a) Implement lane closure protocol per SOP-001 for all blocked lanes.
+b) Activate diversion route per SOP-002 if one or more lanes blocked for expected duration > 20 minutes.
+c) Coordinate signal retiming per SOP-004 to optimise diversion route and downstream clearance.
+d) Manage upstream entry ramps: consider ramp metering or temporary ramp closure if queue exceeds 5 km.
+e) Monitor secondary corridors for overspill congestion every 10 minutes and report to Duty Supervisor.
+
+4. COORDINATION WITH EMERGENCY SERVICES
+a) Establish and maintain direct radio contact with the Police incident commander on dedicated inter-agency channel.
+b) Do not reopen lanes until explicit clearance is received from Police incident commander.
+c) Provide EMS with signal priority corridors if hospital route optimisation is requested (coordinate with Signal Plans team).
+d) Forward real-time queue and speed data to the Fire Incident Commander if fuel spill or fire risk is active.
+e) Log all inter-agency communications in IMS with timestamp and agency identifier.
+
+5. STAND-DOWN AND RECOVERY
+Tier 1 incidents require a post-incident debrief within 48 hours. Incident report must include: timeline of TMC actions, VMS/diversion activation log, resource deployment log, and lessons learned. Submit to Operations Manager and Emergency Liaison within 5 working days.

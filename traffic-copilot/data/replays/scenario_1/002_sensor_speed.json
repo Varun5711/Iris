@@ -1,0 +1,13 @@
+{
+  "event_id": "22222222-0000-0000-0000-000000000002",
+  "source": "sensor",
+  "event_time": "2026-03-21T14:00:05Z",
+  "corridor_id": "I5-SB-42",
+  "lat": 40.7570,
+  "lon": -73.9850,
+  "payload": {},
+  "segment_id": "S-042",
+  "speed_kmh": 12.0,
+  "free_flow_kmh": 80.0,
+  "occupancy_pct": 92.0
+}

@@ -25,6 +25,17 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     llm_temperature: float = 0.1
     llm_max_tokens: int = 2048
+    # HuggingFace Inference API — free tier, no local model download.
+    # Get a free token at https://huggingface.co/settings/tokens (read access).
+    # If blank, falls back to deterministic mock embeddings.
+    hf_api_token: str = ""
+    # Model served by the HF Inference API.
+    # all-MiniLM-L6-v2 = 384-dim, fast, free tier.  Output is padded to embedding_dim.
+    embedding_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
+    embedding_device: str = "auto"
+    embedding_dim: int = 1024
+    # Set to true to bypass all embedding APIs and use fast deterministic mock.
+    embedding_use_mock: bool = False
 
     # ------------------------------------------------------------------ #
     # Persistence                                                          #
@@ -58,6 +69,12 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     osm_place_name: str = "Manhattan, New York, USA"
     osm_graph_cache: str = "/app/data/processed/graph.gpickle"
+
+    # ------------------------------------------------------------------ #
+    # Dev feed replay                                                      #
+    # ------------------------------------------------------------------ #
+    replay_scenario_dir: str = "/app/data/replays/scenario_1"
+    replay_interval_seconds: float = 3.0
 
     # ------------------------------------------------------------------ #
     # Detection                                                            #

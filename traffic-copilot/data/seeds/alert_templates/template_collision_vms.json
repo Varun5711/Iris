@@ -1,0 +1,6 @@
+{
+  "channel": "vms",
+  "incident_type": "collision",
+  "template_text": "ACCIDENT [ROAD] [DIRECTION] [LOCATION]. USE [ALTERNATE]. EXPECT [DELAY] MIN DELAY.",
+  "description": "Standard VMS template for collision incidents with diversion"
+}

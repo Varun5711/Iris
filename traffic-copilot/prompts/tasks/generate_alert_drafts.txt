@@ -1,0 +1,13 @@
+Generate ready-to-publish traffic alerts for all three channels based on the incident context.
+
+Context:
+{context}
+
+Generate one alert per channel:
+
+VMS: UPPERCASE, max 100 characters, use abbreviations (NB/SB/EB/WB, HWY, AVE, MIN)
+RADIO: Proper case, max 50 words, professional broadcast tone, start with "Attention drivers:"
+SOCIAL: Start with 🚨, max 280 chars, add #TrafficAlert hashtag
+
+Return ONLY the "alert_drafts" array of the CopilotResponse JSON.
+Each item: {"channel": "vms"|"radio"|"social", "message": "...", "char_count": N}
