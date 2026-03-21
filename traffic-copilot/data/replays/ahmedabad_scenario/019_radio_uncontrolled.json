@@ -1,0 +1,13 @@
+{
+  "event_id": "6ac586aa-7cce-40a3-aa2f-3957d70d383a",
+  "source": "radio",
+  "event_time": "2026-03-21T17:51:14+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "incident_id": "df099c24-b266-422e-951f-d9603278af9f"
+  },
+  "transcript": "Unit 7 to dispatch — major collision at uncontrolled junction, multiple vehicles blocked, injuries reported, request ambulance and traffic police immediately",
+  "unit_id": "AMD-UNIT-05"
+}

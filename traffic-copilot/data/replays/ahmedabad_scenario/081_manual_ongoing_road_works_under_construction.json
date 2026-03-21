@@ -1,0 +1,21 @@
+{
+  "event_id": "bc46b3ed-6873-4aae-a1dc-b2eceff681a8",
+  "source": "manual",
+  "event_time": "2026-03-21T18:39:04+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Ongoing Road Works/Under Construction",
+    "total_accidents": 15,
+    "persons_killed": 3,
+    "grievously_injured": 7,
+    "minor_injury": 7,
+    "incident_id": "c2f3e029-1b15-42be-aa9d-cabfea7ff43e"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Ongoing Road Works/Under Construction. 15 recorded accidents, 3 fatalities, 7 grievously injured on CG Road (AMD-CGR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

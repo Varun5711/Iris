@@ -1,0 +1,15 @@
+{
+  "event_id": "e1644293-881d-4bcf-8494-f732b00af7a4",
+  "source": "sensor",
+  "event_time": "2026-03-21T18:27:09+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "incident_id": "85211760-4561-40fd-8f4f-bd85f104f132"
+  },
+  "segment_id": "AMD-SEG-AMD-DIN-01-001",
+  "speed_kmh": 18.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 85.0
+}

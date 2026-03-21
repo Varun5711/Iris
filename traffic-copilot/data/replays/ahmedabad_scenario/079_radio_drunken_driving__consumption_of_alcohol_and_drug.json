@@ -1,0 +1,13 @@
+{
+  "event_id": "ca8e2670-c160-43c4-aacd-265b96e0ecac",
+  "source": "radio",
+  "event_time": "2026-03-21T18:36:14+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "incident_id": "3ae971ee-244f-4f36-a599-41182368a546"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SG Highway, Drunken Driving/ Consumption of alcohol and drug cause, response requested",
+  "unit_id": "AMD-UNIT-20"
+}

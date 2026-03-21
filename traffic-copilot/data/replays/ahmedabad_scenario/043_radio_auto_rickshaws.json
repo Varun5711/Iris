@@ -1,0 +1,13 @@
+{
+  "event_id": "c73229f4-0320-44f5-ac7c-b117e74d55e9",
+  "source": "radio",
+  "event_time": "2026-03-21T18:09:14+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "incident_id": "98102a2c-8f18-47ff-a263-dc532bd6fe9b"
+  },
+  "transcript": "Unit to dispatch — traffic incident at Drive-in Road, Auto Rickshaws cause, response requested",
+  "unit_id": "AMD-UNIT-11"
+}

@@ -1,0 +1,21 @@
+{
+  "event_id": "f654f04c-73a2-4e05-afe2-ab1dc50ea176",
+  "source": "manual",
+  "event_time": "2026-03-21T17:42:04+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Over",
+    "total_accidents": 1149,
+    "persons_killed": 333,
+    "grievously_injured": 456,
+    "minor_injury": 300,
+    "incident_id": "75753d1a-4dae-4019-a8fc-beefc9e7a569"
+  },
+  "severity": "critical",
+  "description": "Traffic Control incident — Over. 1149 recorded accidents, 333 fatalities, 456 grievously injured on SG Highway (AMD-SGH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

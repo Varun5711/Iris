@@ -1,0 +1,13 @@
+{
+  "event_id": "4334d713-5c42-4be1-874b-69baba0e59a3",
+  "source": "radio",
+  "event_time": "2026-03-21T18:12:14+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "c7450f60-c2c6-450d-be7a-50594528f714"
+  },
+  "transcript": "Unit to dispatch — traffic incident at NH-48 (Delhi-Mumbai Highway), Cars, Taxis, Vans and LMV cause, response requested",
+  "unit_id": "AMD-UNIT-12"
+}

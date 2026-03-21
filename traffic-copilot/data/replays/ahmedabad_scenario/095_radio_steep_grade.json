@@ -1,0 +1,13 @@
+{
+  "event_id": "96cd09e1-86b8-427e-b18e-1fbd12ba2248",
+  "source": "radio",
+  "event_time": "2026-03-21T18:48:14+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "883c5a28-034f-4166-9bcf-a24a8dd2e928"
+  },
+  "transcript": "Unit to dispatch — traffic incident at NH-48 (Delhi-Mumbai Highway), Steep Grade cause, response requested",
+  "unit_id": "AMD-UNIT-24"
+}

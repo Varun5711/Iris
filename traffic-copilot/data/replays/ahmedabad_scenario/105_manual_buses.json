@@ -1,0 +1,21 @@
+{
+  "event_id": "261b75c2-63fb-404f-9541-31c1752effdd",
+  "source": "manual",
+  "event_time": "2026-03-21T18:57:04+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Buses",
+    "total_accidents": 2,
+    "persons_killed": 0,
+    "grievously_injured": 0,
+    "minor_injury": 2,
+    "incident_id": "5fc64678-fed2-4b72-b79d-8a90f3a1018f"
+  },
+  "severity": "low",
+  "description": "Traffic Control incident — Buses. 2 recorded accidents, 0 fatalities, 0 grievously injured on CG Road (AMD-CGR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

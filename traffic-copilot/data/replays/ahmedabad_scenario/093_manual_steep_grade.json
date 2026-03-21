@@ -1,0 +1,21 @@
+{
+  "event_id": "890dab3e-3298-45fd-9737-f21c67f51f77",
+  "source": "manual",
+  "event_time": "2026-03-21T18:48:04+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Steep Grade",
+    "total_accidents": 4,
+    "persons_killed": 1,
+    "grievously_injured": 3,
+    "minor_injury": 1,
+    "incident_id": "883c5a28-034f-4166-9bcf-a24a8dd2e928"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Steep Grade. 4 recorded accidents, 1 fatalities, 3 grievously injured on NH-48 (Delhi-Mumbai Highway) (AMD-NHW-08). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

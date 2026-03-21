@@ -1,0 +1,13 @@
+{
+  "event_id": "5863bfac-bfe6-4dc1-a6f1-3f6db40f4ace",
+  "source": "radio",
+  "event_time": "2026-03-21T18:03:14+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "2f26dff1-5db8-4ab0-aaad-ba8c81ffb44e"
+  },
+  "transcript": "Unit to dispatch — traffic incident at CG Road, Staggered Junction cause, response requested",
+  "unit_id": "AMD-UNIT-09"
+}

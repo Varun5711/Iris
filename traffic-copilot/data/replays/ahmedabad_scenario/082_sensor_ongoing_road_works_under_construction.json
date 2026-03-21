@@ -1,0 +1,15 @@
+{
+  "event_id": "93960961-8a4c-4d7b-8173-e20089209b43",
+  "source": "sensor",
+  "event_time": "2026-03-21T18:39:09+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "c2f3e029-1b15-42be-aa9d-cabfea7ff43e"
+  },
+  "segment_id": "AMD-SEG-AMD-CGR-01-001",
+  "speed_kmh": 18.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 85.0
+}

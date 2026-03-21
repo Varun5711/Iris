@@ -1,0 +1,13 @@
+{
+  "event_id": "43d82d4e-0d82-41b0-8e9c-fd2ebb36bdeb",
+  "source": "radio",
+  "event_time": "2026-03-21T18:30:14+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "ec673bac-9410-4627-9fdb-79a879816e07"
+  },
+  "transcript": "Unit to dispatch — traffic incident at NH-48 (Delhi-Mumbai Highway), Bridge cause, response requested",
+  "unit_id": "AMD-UNIT-18"
+}

@@ -81,7 +81,23 @@ async def load_or_download_graph(
     logger.info(
         "Cache not found — downloading OSM graph for place: %s", place_name
     )
-    graph = ox.graph_from_place(place_name, network_type="drive")
+    # Import here to avoid circular-import at module load time.
+    from src.core.config import settings as _s
+
+    if _s.osm_center_lat and _s.osm_center_lon:
+        logger.info(
+            "Using graph_from_point (%.4f, %.4f) radius=%dm — faster than full city",
+            _s.osm_center_lat,
+            _s.osm_center_lon,
+            _s.osm_graph_radius_m,
+        )
+        graph = ox.graph_from_point(
+            (_s.osm_center_lat, _s.osm_center_lon),
+            dist=_s.osm_graph_radius_m,
+            network_type="drive",
+        )
+    else:
+        graph = ox.graph_from_place(place_name, network_type="drive")
     graph = ox.add_edge_speeds(graph)
     graph = ox.add_edge_travel_times(graph)
 
@@ -96,6 +112,11 @@ async def load_or_download_graph(
         pickle.dump(graph, fh, protocol=pickle.HIGHEST_PROTOCOL)
 
     return graph
+
+
+def is_graph_ready() -> bool:
+    """Return True if the OSM graph singleton has been loaded."""
+    return _graph is not None
 
 
 async def get_graph() -> nx.MultiDiGraph:

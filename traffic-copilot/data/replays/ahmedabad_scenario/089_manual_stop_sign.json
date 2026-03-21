@@ -1,0 +1,21 @@
+{
+  "event_id": "fe287cea-f773-4f85-848d-023e8117aebe",
+  "source": "manual",
+  "event_time": "2026-03-21T18:45:04+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Stop Sign",
+    "total_accidents": 8,
+    "persons_killed": 3,
+    "grievously_injured": 3,
+    "minor_injury": 2,
+    "incident_id": "3925156a-6da3-4782-8e0c-5c587a139f7f"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Stop Sign. 8 recorded accidents, 3 fatalities, 3 grievously injured on Drive-in Road (AMD-DIN-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

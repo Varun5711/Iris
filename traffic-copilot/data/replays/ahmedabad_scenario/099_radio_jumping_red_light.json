@@ -1,0 +1,13 @@
+{
+  "event_id": "38443048-f199-4425-a918-3c458a7b3f4c",
+  "source": "radio",
+  "event_time": "2026-03-21T18:51:14+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "incident_id": "65cbefaa-be44-4a1b-ba7f-f8f0e6d2c96c"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SP Ring Road (West), Jumping Red Light cause, response requested",
+  "unit_id": "AMD-UNIT-25"
+}

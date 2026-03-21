@@ -1,0 +1,21 @@
+{
+  "event_id": "fc36afb5-b4e5-4ad9-99a2-05228bb46039",
+  "source": "manual",
+  "event_time": "2026-03-21T18:15:04+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Curved Road",
+    "total_accidents": 67,
+    "persons_killed": 16,
+    "grievously_injured": 30,
+    "minor_injury": 29,
+    "incident_id": "afeca8d2-faba-40e6-9ed8-fc6bf1df5677"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Curved Road. 67 recorded accidents, 16 fatalities, 30 grievously injured on SP Ring Road (West) (AMD-SPRR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

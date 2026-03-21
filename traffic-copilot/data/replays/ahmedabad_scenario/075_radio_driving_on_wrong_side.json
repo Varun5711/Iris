@@ -1,0 +1,13 @@
+{
+  "event_id": "006d4c79-61f4-4ec0-851b-2653b905a309",
+  "source": "radio",
+  "event_time": "2026-03-21T18:33:14+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "incident_id": "ca511f7d-d956-4140-8327-c2f5b4a4ff76"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SP Ring Road (West), Driving on Wrong side cause, response requested",
+  "unit_id": "AMD-UNIT-19"
+}

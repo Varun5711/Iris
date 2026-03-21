@@ -1,0 +1,13 @@
+{
+  "event_id": "24682929-66ed-43c7-9cd6-f89ee71e7f2a",
+  "source": "radio",
+  "event_time": "2026-03-21T18:24:14+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "d5c1463f-d051-4222-9108-bd75f7bd53b9"
+  },
+  "transcript": "Unit to dispatch — traffic incident at Ashram Road, Bicycles cause, response requested",
+  "unit_id": "AMD-UNIT-16"
+}

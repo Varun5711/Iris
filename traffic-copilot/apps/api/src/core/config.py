@@ -72,12 +72,21 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     osm_place_name: str = "Manhattan, New York, USA"
     osm_graph_cache: str = "/app/data/processed/graph.gpickle"
+    # If set, use graph_from_point (much faster than graph_from_place).
+    # Center lat/lon of the city + radius in metres.
+    osm_center_lat: float = 0.0
+    osm_center_lon: float = 0.0
+    osm_graph_radius_m: int = 10000
 
     # ------------------------------------------------------------------ #
     # Dev feed replay                                                      #
     # ------------------------------------------------------------------ #
     replay_scenario_dir: str = "/app/data/replays/scenario_1"
     replay_interval_seconds: float = 3.0
+    # Events per batch before the worker pauses replay_batch_interval_seconds.
+    # Keeps Groq token consumption spread out (free tier: 100K TPD).
+    replay_batch_size: int = 10
+    replay_batch_interval_seconds: float = 30.0
 
     # ------------------------------------------------------------------ #
     # Twilio SMS                                                           #
