@@ -1,0 +1,13 @@
+Based on the incident context, recommend signal retiming for up to 5 key intersections.
+
+Rules:
+- ONLY suggest advisory actions like "extend green phase by X seconds" or "adjust cycle timing"
+- NEVER suggest direct actuation or hardware commands
+- Name the specific intersection_id from the context
+- Provide expected_impact in plain language ("reduces queue backup on NB approach by ~30%")
+- Assign confidence 0.0-1.0 based on data quality
+
+Context:
+{context}
+
+Return ONLY the "signal_actions" array of the CopilotResponse JSON.

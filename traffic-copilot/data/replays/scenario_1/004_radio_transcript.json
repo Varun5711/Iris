@@ -1,0 +1,11 @@
+{
+  "event_id": "44444444-0000-0000-0000-000000000004",
+  "source": "radio",
+  "event_time": "2026-03-21T14:00:15Z",
+  "corridor_id": "I5-SB-42",
+  "lat": 40.7580,
+  "lon": -73.9855,
+  "payload": {},
+  "transcript": "Unit 7 on scene. Major collision I-5 southbound Exit 42. Three vehicles involved, one blocking left lane, possible injuries. Request additional units and traffic management support.",
+  "unit_id": "unit_7"
+}

@@ -1,12 +1,11 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "private": true,
+  "name": "traffic-copilot-web",
+  "version": "1.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@types/mapbox-gl": "^3.4.1",

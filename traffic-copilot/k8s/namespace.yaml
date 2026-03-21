@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: trafficcopilot
+  labels:
+    app.kubernetes.io/name: trafficcopilot
+    app.kubernetes.io/managed-by: kubectl
