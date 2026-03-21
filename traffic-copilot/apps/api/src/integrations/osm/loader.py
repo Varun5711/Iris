@@ -119,6 +119,11 @@ def is_graph_ready() -> bool:
     return _graph is not None
 
 
+def get_graph_sync() -> nx.MultiDiGraph | None:
+    """Return the graph singleton synchronously (None if not yet loaded)."""
+    return _graph
+
+
 async def get_graph() -> nx.MultiDiGraph:
     """
     Return the loaded graph singleton.
