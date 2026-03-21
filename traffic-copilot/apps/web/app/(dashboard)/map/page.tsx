@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
-import { useSettings } from "@/lib/settings-context";
+import { useSettings } from "@/ui_lib/settings-context";
 import type { MapboxHandle, MapMarker } from "@/components/map/MapboxMap";
-import type { BackendIncident, BackendRecommendation } from "@/lib/backend";
+import type { BackendIncident, BackendRecommendation } from "@/ui_lib/backend";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
 

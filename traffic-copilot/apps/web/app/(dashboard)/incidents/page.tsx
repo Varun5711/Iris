@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { Incident } from "@/lib/types";
+import type { Incident } from "@/ui_lib/types";
 import type { MapMarker, MapboxHandle, GeoJSONLayerDef } from "@/components/map/MapboxMap";
-import type { BackendRecommendation, CopilotResponse, SignalAction, DiversionPlan } from "@/lib/backend";
-import { useSettings } from "@/lib/settings-context";
+import type { BackendRecommendation, CopilotResponse, SignalAction, DiversionPlan } from "@/ui_lib/backend";
+import { useSettings } from "@/ui_lib/settings-context";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
 

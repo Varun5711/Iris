@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { BackendIncident } from "@/lib/backend";
+import type { BackendIncident } from "@/ui_lib/backend";
 
 interface Message {
   id: string;

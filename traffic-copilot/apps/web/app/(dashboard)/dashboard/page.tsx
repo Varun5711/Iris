@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useSettings } from "@/lib/settings-context";
+import { useSettings } from "@/ui_lib/settings-context";
 import type { MapMarker } from "@/components/map/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });

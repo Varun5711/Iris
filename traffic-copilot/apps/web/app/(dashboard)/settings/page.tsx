@@ -1,6 +1,6 @@
 "use client";
 
-import { useSettings } from "@/lib/settings-context";
+import { useSettings } from "@/ui_lib/settings-context";
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (

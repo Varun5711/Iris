@@ -1,6 +1,6 @@
 import SideNavBar from "@/components/layout/SideNavBar";
 import TopNavBar from "@/components/layout/TopNavBar";
-import { SettingsProvider } from "@/lib/settings-context";
+import { SettingsProvider } from "@/ui_lib/settings-context";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
