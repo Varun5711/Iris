@@ -53,7 +53,8 @@ async def _classify_intent(question: str) -> str:
     """Return an intent label for the question. Falls back to 'general'."""
     try:
         from src.modules.nlp.intent_classifier import classify_intent  # type: ignore[import]
-        return await classify_intent(question)
+        result = classify_intent(question)
+        return result.value if hasattr(result, "value") else str(result)
     except (ImportError, AttributeError):
         pass
 

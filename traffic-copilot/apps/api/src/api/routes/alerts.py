@@ -123,16 +123,22 @@ async def publish_alert(
     # ------------------------------------------------------------------ #
     publish_result: dict = {}
     try:
-        from src.modules.alerts.publisher import publish_alert as _pub  # type: ignore[import]
+        from src.modules.alerts.publisher import publish_alert as _pub
+        from src.integrations.redis.client import get_redis
+        from src.integrations.kafka.producer import get_producer
+        redis_client = await get_redis()
+        kafka_producer = await get_producer()
         publish_result = await _pub(
             alert_id=aid,
             incident_id=incident_id,
             channel=channel,
             message=message,
-            officer_id=body.officer_id,
+            session=db,
+            redis_client=redis_client,
+            kafka_producer=kafka_producer,
         )
     except (ImportError, AttributeError):
-        # Publisher stub not implemented — simulate a successful publish.
+        # Publisher stub not available — simulate a successful publish.
         logger.info(
             "alerts: publisher module not available, simulating publish",
             alert_id=aid,

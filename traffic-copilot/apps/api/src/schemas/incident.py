@@ -51,6 +51,12 @@ class IncidentCreate(BaseModel):
     corridor_id: str | None = Field(
         default=None, description="Traffic management corridor, e.g. 'I-95-NB'"
     )
+    detection_confidence: float | None = Field(
+        default=0.9,
+        ge=0.0,
+        le=1.0,
+        description="Confidence score 0–1 for automated detections; defaults to 0.9 for manual reports",
+    )
     reporter_id: str | None = Field(
         default="manual",
         description="Badge number or system ID of the reporter",

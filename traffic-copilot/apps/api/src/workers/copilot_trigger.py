@@ -110,35 +110,15 @@ def _validate(response_dict: dict) -> dict:
 
 async def _audit_log(session, incident_id: str, action: str, officer_id: str, details: dict) -> None:
     try:
-        from src.modules.audit.logger import write_audit_log  # type: ignore[import]
-        await write_audit_log(
+        from src.modules.audit.logger import log_event
+        await log_event(
+            event_type=action,
+            actor=officer_id,
+            payload={"incident_id": incident_id, **details},
             session=session,
-            incident_id=incident_id,
-            action=action,
-            officer_id=officer_id,
-            details=details,
         )
-    except (ImportError, AttributeError):
-        # Fallback: raw SQL
-        try:
-            from sqlalchemy import text
-            await session.execute(
-                text(
-                    """
-                    INSERT INTO audit_log (id, event_type, actor, payload, created_at)
-                    VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
-                    """
-                ),
-                {
-                    "id": str(uuid4()),
-                    "event_type": action,
-                    "actor": officer_id,
-                    "payload": json.dumps({"incident_id": incident_id, **details}, default=str),
-                    "now": datetime.now(tz=timezone.utc),
-                },
-            )
-        except Exception as exc:
-            logger.warning("copilot_trigger: audit log write failed", error=str(exc))
+    except Exception as exc:
+        logger.warning("copilot_trigger: audit log write failed", error=str(exc))
 
 
 # ---------------------------------------------------------------------------
@@ -288,10 +268,15 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
         # 5. Write alert drafts.
         alert_drafts = validated.get("alert_drafts", [])
         for draft in alert_drafts:
+            # LLM sometimes returns strings instead of {"channel":..., "message":...} dicts
+            if isinstance(draft, str):
+                draft = {"channel": "vms", "message": draft}
+            elif not isinstance(draft, dict):
+                continue
             alert_id = str(uuid4())
             alert_ids.append(alert_id)
             channel = draft.get("channel", "vms")
-            message = draft.get("message", "")
+            message = draft.get("message", draft.get("text", str(draft)))
             try:
                 await session.execute(
                     text(

@@ -119,7 +119,7 @@ async def create_incident(
                      detection_confidence, location, created_at, updated_at)
                 VALUES
                     (:id, 'active', :severity, :description, :corridor_id,
-                     :reporter_id, NULL, {location_expr}, :now, :now)
+                     :reporter_id, :detection_confidence, {location_expr}, :now, :now)
                 """
             ),
             {
@@ -128,6 +128,7 @@ async def create_incident(
                 "description": body.description,
                 "corridor_id": body.corridor_id,
                 "reporter_id": reporter_id,
+                "detection_confidence": body.detection_confidence if body.detection_confidence is not None else 0.9,
                 "now": now,
                 **geo_params,
             },

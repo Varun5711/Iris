@@ -85,60 +85,61 @@ async def _write_approval(
     approval_id = str(uuid4())
     now = datetime.now(tz=timezone.utc)
 
-    async with db.begin():
-        # Update recommendation.
-        await db.execute(
-            text(
-                """
-                UPDATE recommendations
-                SET status = :status, updated_at = :now
-                WHERE id = :id
-                """
-            ),
-            {"status": action, "now": now, "id": recommendation_id},
-        )
+    # Update recommendation.
+    await db.execute(
+        text(
+            """
+            UPDATE recommendations
+            SET status = :status, updated_at = :now
+            WHERE id = :id
+            """
+        ),
+        {"status": action, "now": now, "id": recommendation_id},
+    )
 
-        # Insert approval record.
-        await db.execute(
-            text(
-                """
-                INSERT INTO approvals
-                    (id, recommendation_id, officer_id, action, note, actioned_at)
-                VALUES (:id, :recommendation_id, :officer_id, :action, :note, :now)
-                """
-            ),
-            {
-                "id": approval_id,
-                "recommendation_id": recommendation_id,
-                "officer_id": officer_id,
-                "action": action,
-                "note": note,
-                "now": now,
-            },
-        )
+    # Insert approval record.
+    await db.execute(
+        text(
+            """
+            INSERT INTO approvals
+                (id, recommendation_id, officer_id, action, note, actioned_at)
+            VALUES (:id, :recommendation_id, :officer_id, :action, :note, :now)
+            """
+        ),
+        {
+            "id": approval_id,
+            "recommendation_id": recommendation_id,
+            "officer_id": officer_id,
+            "action": action,
+            "note": note,
+            "now": now,
+        },
+    )
 
-        # Audit log.
-        audit_action = (
-            "RECOMMENDATION_APPROVED" if action == "approved" else "RECOMMENDATION_REJECTED"
-        )
-        await db.execute(
-            text(
-                """
-                INSERT INTO audit_log
-                    (id, event_type, actor, payload, created_at)
-                VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
-                """
+    # Audit log.
+    audit_action = (
+        "RECOMMENDATION_APPROVED" if action == "approved" else "RECOMMENDATION_REJECTED"
+    )
+    await db.execute(
+        text(
+            """
+            INSERT INTO audit_log
+                (id, event_type, actor, payload, created_at)
+            VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
+            """
+        ),
+        {
+            "id": str(uuid4()),
+            "event_type": audit_action,
+            "actor": officer_id,
+            "payload": json.dumps(
+                {"incident_id": incident_id, "recommendation_id": recommendation_id, "note": note}, default=str
             ),
-            {
-                "id": str(uuid4()),
-                "event_type": audit_action,
-                "actor": officer_id,
-                "payload": json.dumps(
-                    {"incident_id": incident_id, "recommendation_id": recommendation_id, "note": note}, default=str
-                ),
-                "now": now,
-            },
-        )
+            "now": now,
+        },
+    )
+
+    await db.commit()
 
     return ApprovalOut(
         id=UUID(approval_id),
