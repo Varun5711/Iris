@@ -60,7 +60,7 @@ async def _fetch_incident_state(incident_id: str, session: AsyncSession) -> dict
                        corridor_id, detection_confidence,
                        created_at::text, updated_at::text
                 FROM incidents
-                WHERE id = :iid::uuid
+                WHERE id = CAST(:iid AS uuid)
                 """
             ),
             {"iid": incident_id},
@@ -77,7 +77,7 @@ async def _fetch_incident_state(incident_id: str, session: AsyncSession) -> dict
                 """
                 SELECT id::text, source, raw_payload, event_time::text
                 FROM incident_events
-                WHERE incident_id = :iid::uuid
+                WHERE incident_id = CAST(:iid AS uuid)
                 ORDER BY event_time DESC
                 LIMIT 20
                 """
@@ -94,7 +94,7 @@ async def _fetch_incident_state(incident_id: str, session: AsyncSession) -> dict
                 """
                 SELECT id::text, osm_way_id, delay_seconds, congestion_pct
                 FROM affected_segments
-                WHERE incident_id = :iid::uuid
+                WHERE incident_id = CAST(:iid AS uuid)
                 """
             ),
             {"iid": incident_id},

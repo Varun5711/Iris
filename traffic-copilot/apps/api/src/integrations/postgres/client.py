@@ -244,7 +244,7 @@ async def upsert_incident_summary(
         INSERT INTO incident_summaries
             (incident_id, summary_text, embedding, outcome, resolution_minutes)
         VALUES
-            (:incident_id::uuid, :summary_text, '{vector_literal}'::vector,
+            (CAST(:incident_id AS uuid), :summary_text, '{vector_literal}'::vector,
              :outcome, :resolution_minutes)
         ON CONFLICT (incident_id)
         DO UPDATE SET

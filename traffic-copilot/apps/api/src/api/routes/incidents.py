@@ -45,16 +45,15 @@ async def _audit(
         await session.execute(
             text(
                 """
-                INSERT INTO audit_log (id, incident_id, action, officer_id, details, created_at)
-                VALUES (:id, :incident_id, :action, :officer_id, :details::jsonb, :now)
+                INSERT INTO audit_log (id, event_type, actor, payload, created_at)
+                VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
                 """
             ),
             {
                 "id": str(uuid4()),
-                "incident_id": incident_id,
-                "action": action,
-                "officer_id": officer_id,
-                "details": json.dumps(details, default=str),
+                "event_type": action,
+                "actor": officer_id,
+                "payload": json.dumps({"incident_id": incident_id, **details}, default=str),
                 "now": datetime.now(tz=timezone.utc),
             },
         )

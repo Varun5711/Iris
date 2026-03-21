@@ -53,7 +53,7 @@ async def log_event(
             text(
                 """
                 INSERT INTO audit_log (event_type, actor, payload)
-                VALUES (:event_type, :actor, :payload::jsonb)
+                VALUES (:event_type, :actor, CAST(:payload AS jsonb))
                 """
             ),
             {

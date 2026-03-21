@@ -63,13 +63,12 @@ async def start_producer(bootstrap_servers: str) -> None:
 
     _producer = AIOKafkaProducer(
         bootstrap_servers=bootstrap_servers,
-        # JSON serialization is handled in publish(); keep value_serializer
-        # as raw bytes to allow full control.
-        value_serializer=lambda v: v,
-        key_serializer=lambda k: k.encode("utf-8") if k is not None else None,
-        # Reasonable production defaults
+        # publish() pre-encodes both key and value to bytes before calling
+        # send_and_wait(), so no serializers are needed here.
+        # acks="all" gives durability; idempotence is omitted because
+        # enable_idempotence=True triggers InitProducerIdRequest which can
+        # time-out on a single-node KRaft broker during startup.
         acks="all",
-        enable_idempotence=True,
         compression_type="gzip",
         max_batch_size=16384,
         linger_ms=10,

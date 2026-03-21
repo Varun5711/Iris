@@ -11,10 +11,21 @@ Runs once on startup if tables are empty.
 from __future__ import annotations
 
 import json
+import uuid
 from pathlib import Path
 from typing import Any
 
 from src.core.logging import get_logger
+
+# Stable namespace for deterministic UUID5 generation.
+# Using the same namespace means re-running the seed always produces the
+# same UUIDs, so ON CONFLICT (id) DO UPDATE works correctly.
+_SEED_NS = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")  # uuid.NAMESPACE_URL
+
+
+def _seed_uuid(key: str) -> str:
+    """Return a stable UUID string derived from *key* via UUID5."""
+    return str(uuid.uuid5(_SEED_NS, key))
 
 logger = get_logger(__name__)
 
@@ -79,42 +90,43 @@ async def _sync_sop_docs(session, groq_client: Any) -> int:
         paragraphs = [p.strip() for p in content.split("\n\n") if p.strip()]
 
         for idx, chunk_text in enumerate(paragraphs):
-            chunk_id = f"{txt_file.stem}_{idx}"
+            # Deterministic UUID5 so upserts are idempotent across re-runs.
+            chunk_key = f"{txt_file.stem}_{idx}"
+            chunk_id = _seed_uuid(chunk_key)
 
             try:
-                embedding = await groq_client.get_embedding(chunk_text)
+                from src.integrations.groq.client import get_embedding
+                embedding = await get_embedding(chunk_text)
             except Exception as exc:
                 logger.warning(
                     "embedding_sync: embedding failed for SOP chunk",
+                    chunk_key=chunk_key,
                     chunk_id=chunk_id,
                     error=str(exc),
                 )
-                # Try direct import fallback.
-                try:
-                    from src.integrations.groq.client import get_embedding
-                    embedding = await get_embedding(chunk_text)
-                except Exception:
-                    continue
+                continue
 
             try:
-                await session.execute(
-                    text(
-                        """
-                        INSERT INTO sop_chunks (id, doc_name, chunk_index, content, embedding)
-                        VALUES (:id, :doc_name, :chunk_index, :content, :embedding::vector)
-                        ON CONFLICT (id) DO UPDATE
-                            SET content   = EXCLUDED.content,
-                                embedding = EXCLUDED.embedding
-                        """
-                    ),
-                    {
-                        "id": chunk_id,
-                        "doc_name": txt_file.stem,
-                        "chunk_index": idx,
-                        "content": chunk_text,
-                        "embedding": json.dumps(embedding),
-                    },
-                )
+                # Savepoint per row — a bad vector won't abort the whole transaction.
+                async with session.begin_nested():
+                    await session.execute(
+                        text(
+                            """
+                            INSERT INTO sop_chunks (id, title, source_file, content, embedding)
+                            VALUES (:id, :title, :source_file, :content, CAST(:embedding AS vector))
+                            ON CONFLICT (id) DO UPDATE
+                                SET content    = EXCLUDED.content,
+                                    embedding  = EXCLUDED.embedding
+                            """
+                        ),
+                        {
+                            "id": chunk_id,
+                            "title": f"{txt_file.stem} (chunk {idx+1})",
+                            "source_file": txt_file.name,
+                            "content": chunk_text,
+                            "embedding": json.dumps(embedding),
+                        },
+                    )
                 count += 1
             except Exception as exc:
                 logger.error(
@@ -165,47 +177,46 @@ async def _sync_alert_templates(session, groq_client: Any) -> int:
             or template_data.get("content")
             or json.dumps(template_data, default=str)
         )
-        template_id = template_data.get("id") or json_file.stem
+        template_key = template_data.get("id") or json_file.stem
+        template_id = _seed_uuid(template_key)
         channel = template_data.get("channel", "general")
         name = template_data.get("name") or json_file.stem
 
         try:
-            embedding = await groq_client.get_embedding(embed_text)
+            from src.integrations.groq.client import get_embedding
+            embedding = await get_embedding(embed_text)
         except Exception as exc:
             logger.warning(
                 "embedding_sync: embedding failed for alert template",
                 template_id=template_id,
                 error=str(exc),
             )
-            try:
-                from src.integrations.groq.client import get_embedding
-                embedding = await get_embedding(embed_text)
-            except Exception:
-                continue
+            continue
 
         try:
-            await session.execute(
-                text(
-                    """
-                    INSERT INTO alert_templates
-                        (id, name, channel, template_text, embedding)
-                    VALUES
-                        (:id, :name, :channel, :template_text, :embedding::vector)
-                    ON CONFLICT (id) DO UPDATE
-                        SET name          = EXCLUDED.name,
-                            channel       = EXCLUDED.channel,
-                            template_text = EXCLUDED.template_text,
-                            embedding     = EXCLUDED.embedding
-                    """
-                ),
-                {
-                    "id": template_id,
-                    "name": name,
-                    "channel": channel,
-                    "template_text": embed_text,
-                    "embedding": json.dumps(embedding),
-                },
-            )
+            async with session.begin_nested():
+                await session.execute(
+                    text(
+                        """
+                        INSERT INTO alert_templates
+                            (id, channel, incident_type, template_text, embedding)
+                        VALUES
+                            (:id, :channel, :incident_type, :template_text, CAST(:embedding AS vector))
+                        ON CONFLICT (id) DO UPDATE
+                            SET channel       = EXCLUDED.channel,
+                                incident_type = EXCLUDED.incident_type,
+                                template_text = EXCLUDED.template_text,
+                                embedding     = EXCLUDED.embedding
+                        """
+                    ),
+                    {
+                        "id": template_id,
+                        "channel": channel,
+                        "incident_type": name,
+                        "template_text": embed_text,
+                        "embedding": json.dumps(embedding),
+                    },
+                )
             count += 1
         except Exception as exc:
             logger.error(

@@ -93,7 +93,7 @@ async def publish_alert(
                 """
                 SELECT recommendation_id::text
                 FROM alerts
-                WHERE id = :alert_id::uuid
+                WHERE id = CAST(:alert_id AS uuid)
                 """
             ),
             {"alert_id": alert_id},
@@ -126,7 +126,7 @@ async def publish_alert(
                 """
                 UPDATE alerts
                 SET status = 'published'
-                WHERE id = :alert_id::uuid
+                WHERE id = CAST(:alert_id AS uuid)
                 """
             ),
             {"alert_id": alert_id},
@@ -197,7 +197,7 @@ async def check_approval_guard(recommendation_id: str, session) -> bool:
                 """
                 SELECT status
                 FROM recommendations
-                WHERE id = :rec_id::uuid
+                WHERE id = CAST(:rec_id AS uuid)
                 """
             ),
             {"rec_id": recommendation_id},

@@ -74,7 +74,22 @@ async def create_topics(bootstrap_servers: str) -> None:
             for topic in ALL_TOPICS
         ]
         results = await admin.create_topics(new_topics, validate_only=False)
-        for topic, error in results.items():
+        # aiokafka >= 0.9 returns a CreateTopicsResponse object, not a dict.
+        # Normalise to a dict regardless of the response shape.
+        if hasattr(results, "topic_errors"):
+            # Response v0–v4: list of (topic, error_code, error_message?)
+            topic_map: dict = {}
+            for entry in results.topic_errors:
+                name = entry[0]
+                code = entry[1]
+                from aiokafka.errors import for_code
+                topic_map[name] = None if code == 0 else for_code(code)()
+        elif hasattr(results, "items"):
+            topic_map = dict(results.items())
+        else:
+            topic_map = {}
+
+        for topic, error in topic_map.items():
             if error is None:
                 logger.info("Kafka topic created: %s", topic)
             elif isinstance(error, TopicAlreadyExistsError):

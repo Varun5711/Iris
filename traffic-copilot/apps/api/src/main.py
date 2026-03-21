@@ -138,8 +138,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     if settings.is_development:
         from src.workers.feed_replay import run_feed_replay
 
-        replay_dir = os.getenv("REPLAY_SCENARIO_DIR", "/app/data/replays/scenario_1")
-        replay_interval = float(os.getenv("REPLAY_INTERVAL_SECONDS", "3.0"))
+        replay_dir = settings.replay_scenario_dir
+        replay_interval = settings.replay_interval_seconds
         _spawn(
             run_feed_replay(
                 scenario_dir=replay_dir,

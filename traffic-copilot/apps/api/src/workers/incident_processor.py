@@ -253,7 +253,7 @@ async def _handle_detection(
         text(
             """
             INSERT INTO incident_events (id, incident_id, source, event_time, raw_payload)
-            VALUES (:id, :incident_id, :source, :event_time, :raw_payload::jsonb)
+            VALUES (:id, :incident_id, :source, :event_time, CAST(:raw_payload AS jsonb))
             """
         ),
         {

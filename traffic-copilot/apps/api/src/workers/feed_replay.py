@@ -62,11 +62,9 @@ async def run_feed_replay(
                 continue
 
             # Use incident_id or event_id as the Kafka message key for partition routing.
-            key: str | None = (
-                str(payload.get("incident_id"))
-                or str(payload.get("event_id"))
-                or None
-            )
+            # Avoid str(None) = "None" — only stringify when the value is actually present.
+            _raw_key = payload.get("incident_id") or payload.get("event_id")
+            key: str | None = str(_raw_key) if _raw_key is not None else None
 
             try:
                 await publish(TRAFFIC_EVENTS_RAW, payload, key=key)

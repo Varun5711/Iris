@@ -125,17 +125,16 @@ async def _write_approval(
             text(
                 """
                 INSERT INTO audit_log
-                    (id, incident_id, action, officer_id, details, created_at)
-                VALUES (:id, :incident_id, :action, :officer_id, :details::jsonb, :now)
+                    (id, event_type, actor, payload, created_at)
+                VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
                 """
             ),
             {
                 "id": str(uuid4()),
-                "incident_id": incident_id,
-                "action": audit_action,
-                "officer_id": officer_id,
-                "details": json.dumps(
-                    {"recommendation_id": recommendation_id, "note": note}, default=str
+                "event_type": audit_action,
+                "actor": officer_id,
+                "payload": json.dumps(
+                    {"incident_id": incident_id, "recommendation_id": recommendation_id, "note": note}, default=str
                 ),
                 "now": now,
             },

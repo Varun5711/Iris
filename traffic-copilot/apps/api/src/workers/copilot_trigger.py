@@ -27,13 +27,18 @@ logger = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-async def _build_context(snapshot: dict) -> dict:
-    """Attempt to call context_builder; fall back to a minimal context."""
+async def _build_context(incident_id: str, snapshot: dict, session, redis_client, groq_client) -> dict:
+    """Call build_recommendation_context with correct args; fall back to snapshot."""
     try:
-        from src.modules.context_builder.builder import build_recommendation_context  # type: ignore[import]
-        return await build_recommendation_context(snapshot)
-    except (ImportError, AttributeError):
-        logger.debug("copilot_trigger: context_builder not implemented, using snapshot as context")
+        from src.modules.context_builder.builder import build_recommendation_context
+        return await build_recommendation_context(
+            incident_id=incident_id,
+            session=session,
+            redis_client=redis_client,
+            groq_client=groq_client,
+        )
+    except Exception as exc:
+        logger.debug("copilot_trigger: context_builder failed, using snapshot fallback", error=str(exc))
         return snapshot
 
 
@@ -42,13 +47,22 @@ async def _build_context(snapshot: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 
-async def _generate_recommendation(context: dict) -> dict | None:
-    """Attempt to call llm_client.generate_recommendation; fall back to Groq directly."""
+async def _generate_recommendation(incident_id: str, context: dict, groq_client, prompt_loader) -> dict | None:
+    """Call llm_client.generate_recommendation with correct args; fall back to Groq directly."""
     try:
-        from src.modules.copilot.llm_client import generate_recommendation  # type: ignore[import]
-        return await generate_recommendation(context)
-    except (ImportError, AttributeError):
-        pass
+        from src.modules.copilot.llm_client import generate_recommendation
+        result = await generate_recommendation(
+            incident_id=incident_id,
+            context=context,
+            groq_client=groq_client,
+            prompt_loader=prompt_loader,
+        )
+        # CopilotResponse dataclass → dict
+        if hasattr(result, "model_dump"):
+            return result.model_dump()
+        return result
+    except Exception as exc:
+        logger.debug("copilot_trigger: llm_client failed, trying direct Groq", error=str(exc))
 
     # Fall back: call Groq directly with a minimal system prompt.
     try:
@@ -79,9 +93,13 @@ async def _generate_recommendation(context: dict) -> dict | None:
 def _validate(response_dict: dict) -> dict:
     """Run policy validation; return validated dict (possibly modified)."""
     try:
-        from src.modules.policies.validator import validate_response  # type: ignore[import]
-        return validate_response(response_dict)
-    except (ImportError, AttributeError):
+        from src.modules.policies.validator import validate_copilot_response
+        from src.schemas.recommendation import CopilotResponse
+        resp_obj = CopilotResponse(**response_dict) if not hasattr(response_dict, "model_dump") else response_dict
+        validated = validate_copilot_response(resp_obj)
+        return validated.model_dump() if hasattr(validated, "model_dump") else validated
+    except Exception as exc:
+        logger.debug("copilot_trigger: policy validation failed, returning raw", error=str(exc))
         return response_dict
 
 
@@ -108,7 +126,7 @@ async def _audit_log(session, incident_id: str, action: str, officer_id: str, de
                 text(
                     """
                     INSERT INTO audit_log (id, event_type, actor, payload, created_at)
-                    VALUES (:id, :event_type, :actor, :payload::jsonb, :now)
+                    VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
                     """
                 ),
                 {
@@ -160,7 +178,6 @@ def _fallback_response(snapshot: dict) -> dict:
 
 async def _handle_message(payload: dict[str, Any], topic: str) -> None:
     """Process a single incident.state.updated message."""
-    from src.db.session import AsyncSessionLocal
     from src.integrations.kafka.producer import publish
     from src.integrations.kafka.topics import RECOMMENDATION_READY
     from sqlalchemy import text
@@ -187,15 +204,28 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
     logger.info("copilot_trigger: processing incident", incident_id=incident_id)
 
     # ------------------------------------------------------------------ #
-    # 1. Build context                                                     #
+    # 1. Deps                                                              #
     # ------------------------------------------------------------------ #
-    context = await _build_context(snapshot)
+    from src.db.session import AsyncSessionLocal
+    from src.integrations.redis.client import get_redis
+    from src.integrations.groq.client import get_groq_client
+    from src.modules.copilot.prompt_loader import load_prompt
+
+    redis_client = await get_redis()
+    groq_client = get_groq_client()
+    prompt_loader = load_prompt
 
     # ------------------------------------------------------------------ #
-    # 2. Call LLM                                                          #
+    # 2. Build context                                                     #
+    # ------------------------------------------------------------------ #
+    async with AsyncSessionLocal() as ctx_session:
+        context = await _build_context(incident_id, snapshot, ctx_session, redis_client, groq_client)
+
+    # ------------------------------------------------------------------ #
+    # 3. Call LLM                                                          #
     # ------------------------------------------------------------------ #
     llm_fallback_used = False
-    raw_response = await _generate_recommendation(context)
+    raw_response = await _generate_recommendation(incident_id, context, groq_client, prompt_loader)
 
     if raw_response is None:
         raw_response = _fallback_response(snapshot)
@@ -223,12 +253,12 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     INSERT INTO recommendations
                         (id, incident_id, rec_type, action, expected_impact,
                          evidence_refs, confidence, blocked_reason, review_required,
-                         status, prompt_snapshot, llm_response, created_at)
+                         status, prompt_snapshot, copilot_response, created_at)
                     VALUES
                         (:id, :incident_id, 'composite', :action, :expected_impact,
-                         :evidence_refs::jsonb, :confidence, :blocked_reason,
-                         :review_required, 'pending', :prompt_snapshot::jsonb,
-                         :llm_response::jsonb, :now)
+                         CAST(:evidence_refs AS jsonb), :confidence, :blocked_reason,
+                         :review_required, 'pending', CAST(:prompt_snapshot AS jsonb),
+                         CAST(:copilot_response AS jsonb), :now)
                     """
                 ),
                 {
@@ -242,7 +272,7 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     "review_required": validated.get("review_required", True),
                     "now": now,
                     "prompt_snapshot": json.dumps({"context_keys": list(context.keys())}, default=str),
-                    "llm_response": json.dumps(validated, default=str),
+                    "copilot_response": json.dumps(validated, default=str),
                 },
             )
         except Exception as exc:
@@ -267,16 +297,17 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     text(
                         """
                         INSERT INTO alerts
-                            (id, recommendation_id, channel, draft_text,
+                            (id, recommendation_id, incident_id, channel, draft_text,
                              status, created_at)
                         VALUES
-                            (:id, :recommendation_id, :channel,
+                            (:id, :recommendation_id, :incident_id, :channel,
                              :draft_text, 'draft', :now)
                         """
                     ),
                     {
                         "id": alert_id,
                         "recommendation_id": recommendation_id,
+                        "incident_id": incident_id,
                         "channel": channel,
                         "draft_text": message,
                         "now": now,

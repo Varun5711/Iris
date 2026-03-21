@@ -118,16 +118,19 @@ async def _try_direct_answer(intent: str, incident_id: str, question: str) -> st
 # ---------------------------------------------------------------------------
 
 
-async def _build_chat_context(snapshot: dict, question: str, intent: str) -> dict:
+async def _build_chat_context(incident_id: str, question: str, intent: str, session, redis_client, groq_client) -> dict:
     try:
-        from src.modules.context_builder.builder import build_chat_context  # type: ignore[import]
-        return await build_chat_context(snapshot, question=question, intent=intent)
-    except (ImportError, AttributeError):
-        return {
-            "snapshot": snapshot,
-            "question": question,
-            "intent": intent,
-        }
+        from src.modules.context_builder.builder import build_chat_context
+        return await build_chat_context(
+            incident_id=incident_id,
+            question=question,
+            session=session,
+            redis_client=redis_client,
+            groq_client=groq_client,
+        )
+    except Exception as exc:
+        logger.debug("chat: build_chat_context failed, using minimal context", error=str(exc))
+        return {"incident_id": incident_id, "question": question, "intent": intent}
 
 
 # ---------------------------------------------------------------------------
@@ -135,11 +138,22 @@ async def _build_chat_context(snapshot: dict, question: str, intent: str) -> dic
 # ---------------------------------------------------------------------------
 
 
-async def _generate_chat_answer(context: dict, question: str) -> str:
+async def _generate_chat_answer(incident_id: str, question: str, context: dict, intent: str, groq_client, prompt_loader) -> str:
     # Try the module method first.
     try:
-        from src.modules.copilot.llm_client import generate_chat_answer  # type: ignore[import]
-        result = await generate_chat_answer(context, question)
+        from src.modules.copilot.llm_client import generate_chat_answer
+        result = await generate_chat_answer(
+            incident_id=incident_id,
+            question=question,
+            context=context,
+            groq_client=groq_client,
+            prompt_loader=prompt_loader,
+            intent=intent,
+        )
+        if hasattr(result, "conversational_answer") and result.conversational_answer:
+            return result.conversational_answer
+        if hasattr(result, "model_dump"):
+            result = result.model_dump()
         if isinstance(result, dict):
             return result.get("conversational_answer") or result.get("answer") or json.dumps(result, default=str)
         return str(result)
@@ -229,8 +243,15 @@ async def ask_question(
         except Exception:
             pass
 
-        chat_context = await _build_chat_context(snapshot, body.question, intent)
-        answer_text = await _generate_chat_answer(chat_context, body.question)
+        from src.integrations.redis.client import get_redis
+        from src.integrations.groq.client import get_groq_client
+        from src.modules.copilot.prompt_loader import load_prompt
+        redis_client = await get_redis()
+        groq_client = get_groq_client()
+        prompt_loader = load_prompt
+
+        chat_context = await _build_chat_context(incident_id, body.question, intent, db, redis_client, groq_client)
+        answer_text = await _generate_chat_answer(incident_id, body.question, chat_context, intent, groq_client, prompt_loader)
         used_llm = True
 
     # ------------------------------------------------------------------ #
@@ -264,8 +285,8 @@ async def ask_question(
                      confidence, blocked_reason, review_required, status, created_at,
                      copilot_response)
                 VALUES
-                    (:id, :incident_id, 'chat', :action, NULL, '[]'::jsonb,
-                     :confidence, NULL, false, 'pending', :now, :copilot_response::jsonb)
+                    (:id, :incident_id, 'chat', :action, NULL, CAST('[]' AS jsonb),
+                     :confidence, NULL, false, 'pending', :now, CAST(:copilot_response AS jsonb))
                 """
             ),
             {
@@ -289,17 +310,17 @@ async def ask_question(
         await db.execute(
             text(
                 """
-                INSERT INTO audit_log (id, incident_id, action, officer_id, details, created_at)
-                VALUES (:id, :incident_id, 'CHAT_QUESTION_ASKED', :officer_id, :details::jsonb, :now)
+                INSERT INTO audit_log (id, event_type, actor, payload, created_at)
+                VALUES (:id, :event_type, :actor, CAST(:payload AS jsonb), :now)
                 """
             ),
             {
                 "id": str(uuid4()),
-                "incident_id": incident_id,
-                "action": "CHAT_QUESTION_ASKED",
-                "officer_id": body.officer_id,
-                "details": json.dumps(
+                "event_type": "CHAT_QUESTION_ASKED",
+                "actor": body.officer_id,
+                "payload": json.dumps(
                     {
+                        "incident_id": incident_id,
                         "recommendation_id": rec_id,
                         "question": body.question,
                         "intent": intent,

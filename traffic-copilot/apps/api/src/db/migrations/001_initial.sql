@@ -59,10 +59,12 @@ CREATE TABLE IF NOT EXISTS incident_events (
 CREATE INDEX IF NOT EXISTS incident_events_incident_id_idx ON incident_events (incident_id);
 CREATE INDEX IF NOT EXISTS incident_events_source_idx      ON incident_events (source);
 CREATE INDEX IF NOT EXISTS incident_events_event_time_idx  ON incident_events (event_time DESC);
--- Partial index for recent events — useful for sliding-window queries
+-- Composite index for recent-event lookups.
+-- Do not use now() in an index predicate here: PostgreSQL requires immutable
+-- expressions in partial-index predicates, and now() is only stable.
 CREATE INDEX IF NOT EXISTS incident_events_recent_idx
     ON incident_events (incident_id, event_time DESC)
-    WHERE event_time > (now() - INTERVAL '24 hours');
+;
 
 
 -- =============================================================================
@@ -131,7 +133,7 @@ CREATE TABLE IF NOT EXISTS recommendations (
     id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_id      UUID         NOT NULL REFERENCES incidents (id) ON DELETE CASCADE,
     rec_type         TEXT         NOT NULL
-                         CHECK (rec_type IN ('signal', 'diversion', 'alert', 'composite')),
+                         CHECK (rec_type IN ('signal', 'diversion', 'alert', 'composite', 'chat')),
     action           TEXT,
     location         TEXT,
     expected_impact  TEXT,
@@ -141,11 +143,10 @@ CREATE TABLE IF NOT EXISTS recommendations (
     review_required  BOOLEAN      NOT NULL DEFAULT FALSE,
     status           TEXT         NOT NULL DEFAULT 'pending'
                          CHECK (status IN ('pending', 'approved', 'rejected', 'executed', 'expired')),
-    -- Full prompt context snapshot for reproducibility and audit
     prompt_snapshot  JSONB,
-    -- Raw LLM response for debugging and re-processing
-    llm_response     JSONB,
-    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
+    copilot_response JSONB,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    updated_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS recommendations_incident_id_idx ON recommendations (incident_id);
@@ -161,6 +162,7 @@ CREATE INDEX IF NOT EXISTS recommendations_created_at_idx  ON recommendations (c
 CREATE TABLE IF NOT EXISTS alerts (
     id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
     recommendation_id UUID         NOT NULL REFERENCES recommendations (id) ON DELETE CASCADE,
+    incident_id       UUID         REFERENCES incidents (id) ON DELETE CASCADE,
     channel           TEXT         NOT NULL
                           CHECK (channel IN ('vms', 'radio', 'social')),
     draft_text        TEXT         NOT NULL,
@@ -251,5 +253,11 @@ $$;
 DROP TRIGGER IF EXISTS incidents_updated_at ON incidents;
 CREATE TRIGGER incidents_updated_at
     BEFORE UPDATE ON incidents
+    FOR EACH ROW
+    EXECUTE FUNCTION update_updated_at();
+
+DROP TRIGGER IF EXISTS recommendations_updated_at ON recommendations;
+CREATE TRIGGER recommendations_updated_at
+    BEFORE UPDATE ON recommendations
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();

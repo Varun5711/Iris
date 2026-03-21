@@ -148,7 +148,7 @@ async def _update_incident_in_db(
         UPDATE incidents
         SET detection_confidence = :confidence,
             updated_at           = now()
-        WHERE id = :incident_id::uuid
+        WHERE id = CAST(:incident_id AS uuid)
         """
     )
     await session.execute(
@@ -167,7 +167,7 @@ async def _resolve_incident_in_db(
         UPDATE incidents
         SET status     = 'resolved',
             updated_at = now()
-        WHERE id = :incident_id::uuid
+        WHERE id = CAST(:incident_id AS uuid)
           AND status NOT IN ('resolved', 'false_alarm')
         """
     )
@@ -184,7 +184,7 @@ async def _store_incident_event(
     sql = text(
         """
         INSERT INTO incident_events (incident_id, source, raw_payload, event_time)
-        VALUES (:incident_id::uuid, :source, :payload::jsonb, :event_time)
+        VALUES (CAST(:incident_id AS uuid), :source, CAST(:payload AS jsonb), :event_time)
         """
     )
     import json
