@@ -252,7 +252,7 @@ async def ask_question(
 
         chat_context = await _build_chat_context(incident_id, body.question, intent, db, redis_client, groq_client)
         answer_text = await _generate_chat_answer(incident_id, body.question, chat_context, intent, groq_client, prompt_loader)
-        used_llm = True
+        used_llm = "unable to answer" not in answer_text.lower()
 
     # ------------------------------------------------------------------ #
     # 5. Store recommendation with rec_type="chat"                        #
@@ -260,6 +260,7 @@ async def ask_question(
     rec_id = str(uuid4())
     now = datetime.now(tz=timezone.utc)
 
+    llm_blocked = not used_llm and direct is None  # Groq failed, not a cache hit
     copilot_response_json = json.dumps(
         {
             "incident_summary": f"Chat Q&A — intent: {intent}",
@@ -270,7 +271,7 @@ async def ask_question(
             "conversational_answer": answer_text,
             "overall_confidence": 0.8 if used_llm else 1.0,
             "review_required": False,
-            "blocked_reason": None,
+            "blocked_reason": "llm_unavailable" if llm_blocked else None,
             "evidence_refs": [],
         },
         default=str,
@@ -286,7 +287,7 @@ async def ask_question(
                      copilot_response)
                 VALUES
                     (:id, :incident_id, 'chat', :action, NULL, CAST('[]' AS jsonb),
-                     :confidence, NULL, false, 'pending', :now, CAST(:copilot_response AS jsonb))
+                     :confidence, :blocked_reason, false, 'pending', :now, CAST(:copilot_response AS jsonb))
                 """
             ),
             {
@@ -294,6 +295,7 @@ async def ask_question(
                 "incident_id": incident_id,
                 "action": body.question[:500],
                 "confidence": 0.8 if used_llm else 1.0,
+                "blocked_reason": "llm_unavailable" if llm_blocked else None,
                 "now": now,
                 "copilot_response": copilot_response_json,
             },

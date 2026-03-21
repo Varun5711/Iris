@@ -842,6 +842,14 @@ async def get_map_data(
             if graph is not None:
                 try:
                     from src.modules.routing.diversion import compute_diversion_routes
+                    # Build blocked edges from affected segments so the
+                    # diversion route avoids already-congested roads.
+                    wp_blocked: list[tuple[int, int]] = [
+                        (int(s["osm_node_u"]), int(s["osm_node_v"]))
+                        for s in segments
+                        if s.get("osm_node_u") and s.get("osm_node_v")
+                    ]
+
                     # Snap each waypoint to nearest OSM node
                     snapped: list[int] = []
                     for wp in valid_wps:
@@ -849,24 +857,27 @@ async def get_map_data(
                         if node:
                             snapped.append(node)
 
-                    # Route between consecutive snapped nodes
+                    # Route between consecutive snapped nodes using A* (k=1).
+                    # A* uses straight-line heuristic → faster than Dijkstra
+                    # on 67k-node Ahmedabad graph. Blocked edges exclude
+                    # congested segments so the diversion avoids the jam.
                     if len(snapped) >= 2:
                         for i in range(len(snapped) - 1):
                             seg_routes = await compute_diversion_routes(
                                 origin_node=snapped[i],
                                 destination_node=snapped[i + 1],
                                 graph=graph,
-                                blocked_edges=[],
+                                blocked_edges=wp_blocked,
                                 k=1,
                             )
                             if seg_routes:
-                                seg_coords = seg_routes[0]["route_geojson"]["coordinates"]
-                                # Avoid duplicating join node between segments
+                                best_seg = seg_routes[0]  # A* already returns optimal
+                                seg_coords = best_seg["route_geojson"]["coordinates"]
                                 if all_coords:
                                     seg_coords = seg_coords[1:]
                                 all_coords.extend(seg_coords)
-                                total_dist_m += seg_routes[0]["distance_m"]
-                                for rn in seg_routes[0].get("road_names", []):
+                                total_dist_m += best_seg["distance_m"]
+                                for rn in best_seg.get("road_names", []):
                                     if rn not in road_names_collected:
                                         road_names_collected.append(rn)
                         if len(all_coords) >= 2:

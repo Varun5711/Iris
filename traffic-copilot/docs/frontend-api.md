@@ -32,21 +32,19 @@ Basic liveness check.
 
 **Response `200`**
 ```json
-{ "status": "ok", "environment": "development" }
+{ "status": "ok", "service": "trafficcopilot-api", "environment": "development", "version": "1.0.0" }
 ```
 
 ### `GET /health/ready`
-Readiness — confirms DB, Redis, Kafka, OSM graph are all up.
+Readiness — confirms Kafka and Redis are reachable.
 
 **Response `200`**
 ```json
 {
   "status": "ready",
   "checks": {
-    "database": "ok",
-    "redis": "ok",
     "kafka": "ok",
-    "osm_graph": "ok"
+    "redis": "ok"
   }
 }
 ```
@@ -614,8 +612,8 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
           "Income Tax Re-entry"
         ],
         "road_names": ["Kasturba Gandhi Road"],
-        "distance_m": 4561.2,
-        "coordinate_count": 68,
+        "distance_m": 3751.1,
+        "coordinate_count": 58,
         "stroke_color": "#3399ff",
         "stroke_width": 4,
         "stroke_dash": "8,4"
@@ -636,9 +634,21 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
 | `feature_type` | Geometry | What it is |
 |----------------|----------|------------|
 | `incident_point` | `Point` | Exact incident location — place a marker here |
-| `diversion_route` | `LineString` | Road-following diversion path (68+ real OSM nodes) — draw as dashed blue line |
+| `diversion_route` | `LineString` | Road-following diversion path (50–130 real OSM nodes) — draw as dashed blue line |
 | `affected_segment` | `LineString` | Congested OSM road segment — draw as red/orange line |
 | `signal_action` | `Point` | Intersection requiring signal change — place a traffic light icon |
+
+**`signal_action` properties:**
+| Property | Type | Example |
+|----------|------|---------|
+| `intersection_id` | string | `"AMD-CGR-01-001"` |
+| `action` | string | `"Extend green phase by 15s on NB approach"` |
+| `expected_impact` | string | `"Reduces queue backup by ~30%"` |
+| `confidence` | float | `0.8` |
+| `road_names` | `string[]` | `["Relief Road"]` |
+| `osm_node_id` | int | `1967251120` |
+| `marker_color` | string | `"#ffdd00"` |
+| `marker_icon` | string | `"traffic-light"` |
 
 **`diversion_route` extra properties:**
 | Property | Type | Meaning |
@@ -737,7 +747,7 @@ Step 3 — Show map
     signal_action    → yellow traffic light markers at intersections
 
 Step 4 — Fetch recommendations
-  GET /incidents/{incident_id}/recommendations → array of RecommendationOut
+  GET /recommendations/{incident_id}           → array of RecommendationOut
   Display: narrative, signal_actions[], diversion_plan.route_description,
            diversion_plan.road_names, diversion_plan.distance_m, alert_drafts[]
 
