@@ -1,24 +1,44 @@
-import { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 const GROQ_API_KEY = process.env.GROQ_API_KEY!;
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
-const SYSTEM_PROMPT = `You are IRIS (Intelligent Road Infrastructure System), an advanced AI traffic management assistant for the Central District traffic control center.
+const SYSTEM_PROMPT = `You are IRIS (Intelligent Road Infrastructure System), an advanced AI traffic management assistant.
 
-You have access to real-time traffic data, camera feeds, sensor networks, and historical patterns. You speak concisely and professionally, like an expert traffic analyst.
+You have access to real-time traffic data, camera feeds, sensor networks, and historical patterns.
+Speak concisely and professionally like an expert traffic analyst.
 
-Current system status:
-- Active incidents: 4 (1 critical on HWY 101)
-- Vehicle count: ~137 vehicles/min
-- Avg speed: 35 MPH (below normal due to congestion)
-- Signal efficiency: 94.2%
-- Weather: Light rain, reducing visibility by 15%
-
-Provide specific, actionable traffic management recommendations. Keep responses focused and under 150 words unless detailed analysis is requested.`;
+Current system: Central District, Manhattan. Active incidents on HWY 101 (critical congestion).
+Provide specific, actionable traffic management recommendations. Keep responses under 200 words unless detailed analysis is requested.`;
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json();
+  const { messages, incidentId, question, officerId = "officer-web" } = await req.json();
 
+  // Try backend first (has full incident context, OSM graph data, etc)
+  if (incidentId && question) {
+    try {
+      const res = await fetch(`${BACKEND}/chat/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ incident_id: incidentId, question, officer_id: officerId }),
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        const rec = await res.json();
+        const answer =
+          rec.copilot_response?.conversational_answer ||
+          rec.copilot_response?.narrative ||
+          rec.action ||
+          "I've processed your query.";
+        return NextResponse.json({ answer, recommendation: rec });
+      }
+    } catch {
+      // fall through to Groq
+    }
+  }
+
+  // Fallback: direct Groq streaming
   const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -27,7 +47,7 @@ export async function POST(req: NextRequest) {
     },
     body: JSON.stringify({
       model: GROQ_MODEL,
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...messages],
+      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...(messages ?? [])],
       stream: true,
       temperature: 0.3,
       max_tokens: 512,
@@ -35,14 +55,9 @@ export async function POST(req: NextRequest) {
   });
 
   if (!response.ok) {
-    const err = await response.text();
-    return new Response(JSON.stringify({ error: err }), {
-      status: 500,
-      headers: { "Content-Type": "application/json" },
-    });
+    return NextResponse.json({ error: "LLM unavailable" }, { status: 500 });
   }
 
-  // Stream the response back
   return new Response(response.body, {
     headers: {
       "Content-Type": "text/event-stream",

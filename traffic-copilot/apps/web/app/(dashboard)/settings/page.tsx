@@ -1,52 +1,25 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-interface Settings {
-  dataSources: {
-    trafficCamera: boolean;
-    iotSensors: boolean;
-    weatherApi: boolean;
-    cctv: boolean;
-  };
-  apiEndpoint: string;
-  aiSensitivity: number;
-  autoActions: {
-    logMajorIncidents: boolean;
-    autoDispatchDrones: boolean;
-    smartRerouting: boolean;
-    alertAuthorities: boolean;
-  };
-  alerts: {
-    criticalChannels: { email: boolean; sms: boolean; phone: boolean };
-    moderateChannels: { email: boolean; sms: boolean; phone: boolean };
-  };
-}
-
-const DEFAULT_SETTINGS: Settings = {
-  dataSources: { trafficCamera: true, iotSensors: false, weatherApi: true, cctv: true },
-  apiEndpoint: "https://api.iris-intel.gov/v2/telemetry",
-  aiSensitivity: 74,
-  autoActions: { logMajorIncidents: true, autoDispatchDrones: false, smartRerouting: true, alertAuthorities: false },
-  alerts: {
-    criticalChannels: { email: true, sms: true, phone: true },
-    moderateChannels: { email: true, sms: false, phone: false },
-  },
-};
+import { useState } from "react";
+import { useSettings } from "@/ui_lib/settings-context";
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!on)}
-      className={`relative inline-block w-12 h-6 rounded-full cursor-pointer transition-colors ${on ? "bg-primary" : "bg-surface-container-high"}`}
+      className={`relative flex-shrink-0 inline-block w-11 h-6 rounded-full cursor-pointer transition-colors duration-200 ${on ? "bg-primary" : "bg-surface-container-high"}`}
     >
-      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${on ? "translate-x-7" : "translate-x-1"}`}></span>
+      <span
+        className="absolute top-[3px] h-[18px] w-[18px] bg-white rounded-full shadow-sm transition-all duration-200"
+        style={{ left: on ? "calc(100% - 21px)" : "3px" }}
+      />
     </button>
   );
 }
 
 const TABS = [
   { key: "system", icon: "database", label: "System Settings" },
+  { key: "maplayers", icon: "layers", label: "Map Layers" },
   { key: "alerts", icon: "notifications_active", label: "Alert Config" },
   { key: "users", icon: "person_search", label: "User Management" },
   { key: "ai", icon: "psychology", label: "AI Sensitivity" },
@@ -60,31 +33,17 @@ const USERS = [
 ];
 
 export default function SettingsPage() {
+  const { settings, update, save, saved } = useSettings();
   const [activeTab, setActiveTab] = useState("system");
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
-  const [saved, setSaved] = useState(false);
-  const [pendingTab, setPendingTab] = useState<string | null>(null);
 
-  useEffect(() => {
-    const stored = localStorage.getItem("iris-settings");
-    if (stored) {
-      try { setSettings(JSON.parse(stored)); } catch {}
-    }
-  }, []);
-
-  const save = () => {
-    localStorage.setItem("iris-settings", JSON.stringify(settings));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const updateDS = (key: keyof Settings["dataSources"], v: boolean) =>
-    setSettings((p) => ({ ...p, dataSources: { ...p.dataSources, [key]: v } }));
-
-  const updateAA = (key: keyof Settings["autoActions"], v: boolean) =>
-    setSettings((p) => ({ ...p, autoActions: { ...p.autoActions, [key]: v } }));
-
-  const sensitivityLabel = settings.aiSensitivity < 40 ? "Conservative" : settings.aiSensitivity < 70 ? "Balanced" : settings.aiSensitivity < 90 ? "Aggressive" : "Maximum";
+  const sensitivityLabel =
+    settings.aiSensitivity < 40
+      ? "Conservative"
+      : settings.aiSensitivity < 70
+      ? "Balanced"
+      : settings.aiSensitivity < 90
+      ? "Aggressive"
+      : "Maximum";
 
   return (
     <main className="min-h-screen bg-surface pt-24">
@@ -96,11 +55,20 @@ export default function SettingsPage() {
           </div>
           <button
             onClick={save}
-            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all ${saved ? "bg-primary/10 text-primary" : "signature-gradient text-white shadow-md hover:brightness-110 active:scale-95"}`}
+            className={`px-6 py-2.5 rounded-full font-bold text-sm transition-all ${
+              saved
+                ? "bg-primary/10 text-primary"
+                : "signature-gradient text-white shadow-md hover:brightness-110 active:scale-95"
+            }`}
           >
             {saved ? (
-              <span className="flex items-center gap-2"><span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>Saved</span>
-            ) : "Save Changes"}
+              <span className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                Saved
+              </span>
+            ) : (
+              "Save Changes"
+            )}
           </button>
         </div>
 
@@ -125,6 +93,7 @@ export default function SettingsPage() {
 
           {/* Content */}
           <div className="col-span-12 md:col-span-9 flex flex-col gap-8">
+
             {/* SYSTEM SETTINGS */}
             {activeTab === "system" && (
               <>
@@ -150,7 +119,10 @@ export default function SettingsPage() {
                             <p className="text-xs text-on-surface-variant">{desc}</p>
                           </div>
                         </div>
-                        <Toggle on={settings.dataSources[key]} onChange={(v) => updateDS(key, v)} />
+                        <Toggle
+                          on={settings.dataSources[key]}
+                          onChange={(v) => update({ dataSources: { ...settings.dataSources, [key]: v } })}
+                        />
                       </div>
                     ))}
                   </div>
@@ -161,7 +133,7 @@ export default function SettingsPage() {
                         className="flex-1 bg-surface border-none rounded-lg text-sm px-4 py-3 focus:ring-2 focus:ring-primary-container outline-none text-on-surface"
                         type="text"
                         value={settings.apiEndpoint}
-                        onChange={(e) => setSettings((p) => ({ ...p, apiEndpoint: e.target.value }))}
+                        onChange={(e) => update({ apiEndpoint: e.target.value })}
                       />
                       <button onClick={save} className="px-6 py-2 bg-primary text-white rounded-full font-bold text-sm hover:opacity-90 transition-opacity">
                         Update
@@ -192,11 +164,13 @@ export default function SettingsPage() {
                         min="10"
                         max="99"
                         value={settings.aiSensitivity}
-                        onChange={(e) => setSettings((p) => ({ ...p, aiSensitivity: parseInt(e.target.value) }))}
+                        onChange={(e) => update({ aiSensitivity: parseInt(e.target.value) })}
                       />
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-on-surface">{settings.aiSensitivity}%</span>
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${settings.aiSensitivity > 80 ? "bg-error-container text-on-error-container" : "bg-primary-container/20 text-primary"}`}>{sensitivityLabel}</span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${settings.aiSensitivity > 80 ? "bg-error-container text-on-error-container" : "bg-primary-container/20 text-primary"}`}>
+                          {sensitivityLabel}
+                        </span>
                       </div>
                       <div className="p-4 bg-secondary-container/20 rounded-lg flex items-start gap-3">
                         <span className="material-symbols-outlined text-primary text-sm">info</span>
@@ -221,13 +195,63 @@ export default function SettingsPage() {
                       ].map(({ key, label }) => (
                         <label key={key} className="flex items-center justify-between p-3 rounded-lg hover:bg-surface-container-low cursor-pointer transition-colors">
                           <span className="text-sm font-medium text-on-surface">{label}</span>
-                          <Toggle on={settings.autoActions[key]} onChange={(v) => updateAA(key, v)} />
+                          <Toggle
+                            on={settings.autoActions[key]}
+                            onChange={(v) => update({ autoActions: { ...settings.autoActions, [key]: v } })}
+                          />
                         </label>
                       ))}
                     </div>
                   </div>
                 </section>
               </>
+            )}
+
+            {/* MAP LAYERS */}
+            {activeTab === "maplayers" && (
+              <section className="bg-surface-container-lowest rounded-xl p-8 shadow-sm">
+                <div className="mb-6">
+                  <h3 className="text-lg font-bold text-on-surface">Map Layer Visibility</h3>
+                  <p className="text-sm text-on-surface-variant">Toggle which layers appear on the live traffic map. Changes apply instantly across all map views.</p>
+                </div>
+                <div className="space-y-4">
+                  {[
+                    { key: "traffic" as const, icon: "traffic", label: "Traffic Flow Layer", desc: "Congestion heatmap and speed overlays" },
+                    { key: "incidents" as const, icon: "warning", label: "Incident Markers", desc: "Active incidents plotted on the map" },
+                    { key: "signals" as const, icon: "traffic_jam", label: "Signal Actions", desc: "Re-timing recommendations at intersections" },
+                    { key: "cameras" as const, icon: "videocam", label: "Camera Feeds", desc: "CCTV camera positions and coverage zones" },
+                    { key: "diversionRoutes" as const, icon: "alt_route", label: "Diversion Routes", desc: "Optimised alternate routes from LLM output" },
+                    { key: "affectedSegments" as const, icon: "route", label: "Affected Segments", desc: "Road segments impacted by active incidents" },
+                  ].map(({ key, icon, label, desc }) => (
+                    <div key={key} className="flex items-center justify-between py-4 border-b border-surface-container-low last:border-0">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-lg ${settings.mapLayers[key] ? "bg-primary-container" : "bg-surface-container-low"}`}>
+                          <span className={`material-symbols-outlined ${settings.mapLayers[key] ? "text-primary" : "text-on-surface-variant"}`} style={{ fontVariationSettings: "'FILL' 1" }}>{icon}</span>
+                        </div>
+                        <div>
+                          <p className="font-bold text-on-surface">{label}</p>
+                          <p className="text-xs text-on-surface-variant">{desc}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${settings.mapLayers[key] ? "bg-primary/10 text-primary" : "bg-surface-container text-on-surface-variant"}`}>
+                          {settings.mapLayers[key] ? "VISIBLE" : "HIDDEN"}
+                        </span>
+                        <Toggle
+                          on={settings.mapLayers[key]}
+                          onChange={(v) => update({ mapLayers: { ...settings.mapLayers, [key]: v } })}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-6 p-4 bg-primary/5 rounded-lg flex items-start gap-3">
+                  <span className="material-symbols-outlined text-primary text-sm">info</span>
+                  <p className="text-xs text-on-surface-variant">
+                    Layer visibility syncs instantly with the Map, Dashboard, and Incidents pages — no page refresh needed.
+                  </p>
+                </div>
+              </section>
             )}
 
             {/* ALERT CONFIG */}
@@ -270,10 +294,12 @@ export default function SettingsPage() {
                                   <button
                                     key={ch}
                                     onClick={() =>
-                                      setSettings((p) => ({
-                                        ...p,
-                                        alerts: { ...p.alerts, [key]: { ...p.alerts[key], [ch]: !p.alerts[key][ch] } },
-                                      }))
+                                      update({
+                                        alerts: {
+                                          ...settings.alerts,
+                                          [key]: { ...settings.alerts[key], [ch]: !settings.alerts[key][ch] },
+                                        },
+                                      })
                                     }
                                     className={`transition-colors ${settings.alerts[key][ch] ? "text-primary" : "text-on-surface-variant/30"}`}
                                     title={ch}
@@ -356,7 +382,7 @@ export default function SettingsPage() {
                       min="10"
                       max="99"
                       value={settings.aiSensitivity}
-                      onChange={(e) => setSettings((p) => ({ ...p, aiSensitivity: parseInt(e.target.value) }))}
+                      onChange={(e) => update({ aiSensitivity: parseInt(e.target.value) })}
                     />
                   </div>
 
@@ -368,8 +394,12 @@ export default function SettingsPage() {
                     ].map(({ label, value, desc }) => (
                       <button
                         key={label}
-                        onClick={() => setSettings((p) => ({ ...p, aiSensitivity: value }))}
-                        className={`p-4 rounded-xl border-2 text-left transition-all ${settings.aiSensitivity === value ? "border-primary bg-primary/5" : "border-outline-variant/20 hover:border-primary/30"}`}
+                        onClick={() => update({ aiSensitivity: value })}
+                        className={`p-4 rounded-xl border-2 text-left transition-all ${
+                          settings.aiSensitivity === value
+                            ? "border-primary bg-primary/5"
+                            : "border-outline-variant/20 hover:border-primary/30"
+                        }`}
                       >
                         <p className="font-bold text-sm text-on-surface">{label}</p>
                         <p className="text-xs text-on-surface-variant mt-1">{desc}</p>

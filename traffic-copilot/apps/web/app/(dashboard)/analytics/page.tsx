@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import type { AnalyticsData } from "@/lib/types";
+import type { AnalyticsData } from "@/ui_lib/types";
 
 export default function AnalyticsPage() {
   const router = useRouter();

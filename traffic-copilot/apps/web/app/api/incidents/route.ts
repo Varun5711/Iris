@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 
-const incidents = [
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+
+// Fallback mock data when backend is unavailable
+const MOCK = [
   {
-    id: "INC-8821",
+    id: "00000000-0000-0000-0000-000000000001",
     title: "Major Traffic Congestion: HWY 101 North",
     severity: "critical",
     location: "Central District, Sector 4B",
@@ -12,56 +15,54 @@ const incidents = [
     status: "active",
     impactRadius: "1.2 km",
     delayEstimate: "+18m",
-    description: "An unexpected 45% increase in traffic volume detected at the HWY 101 Northbound exit. Secondary congestion forming on Oak St and 5th Ave due to spill-back.",
+    description: "45% increase in traffic volume detected at HWY 101 Northbound. Secondary congestion on Oak St.",
+    congestion_pct: 78,
+    delay_seconds: 1080,
   },
   {
-    id: "INC-8820",
+    id: "00000000-0000-0000-0000-000000000002",
     title: "Signal Malfunction: Exit 12",
     severity: "high",
     location: "Northern Gateway, Exit 12",
     lat: 40.7689,
     lng: -73.9651,
     detectedAt: new Date(Date.now() - 52 * 60000).toISOString(),
-    status: "investigating",
+    status: "active",
     impactRadius: "0.4 km",
     delayEstimate: "+7m",
-    description: "Traffic signal malfunction causing manual traffic control at Exit 12. Officers dispatched.",
-  },
-  {
-    id: "INC-8819",
-    title: "Vehicle Breakdown: Bridge Span",
-    severity: "moderate",
-    location: "West End Terminal",
-    lat: 40.7489,
-    lng: -74.0051,
-    detectedAt: new Date(Date.now() - 120 * 60000).toISOString(),
-    status: "resolved",
-    impactRadius: "0.2 km",
-    delayEstimate: "+3m",
-    description: "Stalled vehicle on bridge right lane. Recovery unit dispatched and incident cleared.",
-  },
-  {
-    id: "INC-8818",
-    title: "Pedestrian Overflow: Central Square",
-    severity: "low",
-    location: "Central Square Plaza",
-    lat: 40.7529,
-    lng: -73.9773,
-    detectedAt: new Date(Date.now() - 200 * 60000).toISOString(),
-    status: "resolved",
-    impactRadius: "0.1 km",
-    delayEstimate: "+2m",
-    description: "Unusual pedestrian density due to public event. Signals adjusted automatically.",
+    description: "Traffic signal malfunction at Exit 12. Manual control active.",
+    congestion_pct: 45,
+    delay_seconds: 420,
   },
 ];
 
 export async function GET() {
-  // Simulate slight randomization to make it feel live
-  const live = incidents.map((i) => ({
-    ...i,
-    detectedAt: new Date(
-      new Date(i.detectedAt).getTime() + Math.floor(Math.random() * 30000)
-    ).toISOString(),
-  }));
-  return NextResponse.json(live);
+  try {
+    const res = await fetch(`${BACKEND}/incidents/?status=active&limit=50`, {
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!res.ok) throw new Error("backend error");
+    const data = await res.json();
+
+    // Normalise backend shape to our frontend shape
+    const normalised = data.map((i: Record<string, unknown>) => ({
+      id: i.id,
+      title: `${String(i.severity ?? "").toUpperCase()} — ${i.description ?? "Incident"}`,
+      severity: i.severity === "medium" ? "moderate" : i.severity,
+      location: i.corridor_id ?? "Central District",
+      lat: (i.location_lat as number) ?? 40.7589,
+      lng: (i.location_lon as number) ?? -73.9851,
+      detectedAt: i.created_at,
+      status: i.status === "false_alarm" ? "resolved" : i.status,
+      impactRadius: "—",
+      delayEstimate: "—",
+      description: i.description ?? "",
+      detection_confidence: i.detection_confidence,
+    }));
+
+    return NextResponse.json(normalised);
+  } catch {
+    return NextResponse.json(MOCK);
+  }
 }

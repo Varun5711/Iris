@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import type { LogEntry } from "@/lib/types";
+import type { LogEntry } from "@/ui_lib/types";
 
 const TYPE_CONFIG: Record<string, { label: string; icon: string; color: string; bg: string }> = {
   ai_autonomy: { label: "AI Autonomy", icon: "smart_toy", color: "text-primary", bg: "bg-primary-container/20" },
