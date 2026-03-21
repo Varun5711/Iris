@@ -21,6 +21,8 @@ from src.schemas.recommendation import (
     AlertDraft,
     CopilotResponse,
     DiversionPlan,
+    DiversionWaypoint,
+    EmergencyControl,
     SignalAction,
 )
 
@@ -62,12 +64,28 @@ def _parse_diversion_plan(raw: Any) -> DiversionPlan | None:
     if not isinstance(raw, dict) or not raw:
         return None
     try:
+        # Parse waypoints if the LLM included them.
+        raw_waypoints = raw.get("waypoints") or []
+        waypoints: list[DiversionWaypoint] = []
+        if isinstance(raw_waypoints, list):
+            for wp in raw_waypoints:
+                if isinstance(wp, dict):
+                    try:
+                        waypoints.append(DiversionWaypoint(
+                            name=str(wp.get("name", "waypoint")),
+                            lat=float(wp.get("lat", 0.0)),
+                            lng=float(wp.get("lng", wp.get("lon", 0.0))),
+                        ))
+                    except Exception:  # noqa: BLE001
+                        pass
+
         return DiversionPlan(
             route_description=str(raw.get("route_description", "")),
             estimated_extra_minutes=float(raw.get("estimated_extra_minutes", 0.0)),
             traffic_redistribution_pct=float(raw.get("traffic_redistribution_pct", 0.0)),
             confidence=float(raw.get("confidence", 0.5)),
             evidence_refs=list(raw.get("evidence_refs") or []),
+            waypoints=waypoints,
         )
     except Exception as exc:  # noqa: BLE001
         logger.warning("_parse_diversion_plan: parse failed — %s", exc)
@@ -96,6 +114,39 @@ def _parse_alert_drafts(raw: Any) -> list[AlertDraft]:
         except Exception as exc:  # noqa: BLE001
             logger.warning("_parse_alert_drafts: skipping item %s — %s", item, exc)
     return drafts
+
+
+def _parse_emergency_controls(raw: Any) -> list[EmergencyControl]:
+    """Safely parse exactly 3 emergency control dicts from LLM output."""
+    if not isinstance(raw, dict):
+        return []
+    items = raw.get("emergency_controls", [])
+    if not isinstance(items, list):
+        return []
+    valid_services = {"police", "fire", "ems", "tmc"}
+    valid_priorities = {"immediate", "urgent", "routine"}
+    controls: list[EmergencyControl] = []
+    for item in items[:3]:
+        if not isinstance(item, dict):
+            continue
+        service = str(item.get("service", "tmc")).lower()
+        priority = str(item.get("priority", "routine")).lower()
+        if service not in valid_services:
+            service = "tmc"
+        if priority not in valid_priorities:
+            priority = "routine"
+        try:
+            controls.append(
+                EmergencyControl(
+                    service=service,  # type: ignore[arg-type]
+                    action=str(item.get("action", "Assess situation and coordinate response.")),
+                    priority=priority,  # type: ignore[arg-type]
+                    rationale=str(item.get("rationale", "Based on incident context.")),
+                )
+            )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("_parse_emergency_controls: skipping item %s — %s", item, exc)
+    return controls
 
 
 def _parse_copilot_response(raw: dict, incident_id: str) -> CopilotResponse:
@@ -218,6 +269,39 @@ async def generate_recommendation(
         validated.overall_confidence,
         validated.review_required,
     )
+
+    # ---- 5. Emergency controls (confidence-gated) --------------------------
+    if validated.overall_confidence > 0.5:
+        try:
+            controls_prompt_tmpl = prompt_loader.load_task_prompt("generate_emergency_controls")
+        except FileNotFoundError:
+            controls_prompt_tmpl = (
+                "Generate exactly 3 emergency service control recommendations as JSON "
+                "with key 'emergency_controls' containing a list of "
+                "{service, action, priority, rationale} objects."
+            )
+        controls_user_message = (
+            f"{controls_prompt_tmpl}\n\n"
+            f"=== CONTEXT ===\n{context_str}\n\n"
+            f"incident_id: {incident_id}\n"
+            f"incident_summary: {validated.incident_summary}\n"
+            f"overall_confidence: {validated.overall_confidence}\n\n"
+            "Return ONLY a JSON object with key 'emergency_controls'."
+        )
+        controls_raw = await call_copilot_safe(system_prompt, controls_user_message)
+        if controls_raw is not None:
+            validated.emergency_controls = _parse_emergency_controls(controls_raw)
+            logger.info(
+                "generate_recommendation: emergency_controls generated count=%d incident=%s",
+                len(validated.emergency_controls),
+                incident_id,
+            )
+        else:
+            logger.warning(
+                "generate_recommendation: emergency_controls LLM call failed incident=%s",
+                incident_id,
+            )
+
     return validated
 
 

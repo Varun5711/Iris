@@ -20,6 +20,33 @@ from uuid import UUID
 
 from pydantic import BaseModel, Field, model_validator
 
+# ---------------------------------------------------------------------------
+# Emergency control suggestion
+# ---------------------------------------------------------------------------
+
+
+class EmergencyControl(BaseModel):
+    """
+    A single advisory emergency-service control action generated when
+    overall_confidence > 0.5.  Always requires officer approval before acting.
+    """
+
+    service: Literal["police", "fire", "ems", "tmc"] = Field(
+        ..., description="Target emergency service agency"
+    )
+    action: str = Field(
+        ...,
+        min_length=1,
+        description="Specific advisory action in plain English (e.g. 'Recommend deploying unit to block on-ramp at Junction 42')",
+    )
+    priority: Literal["immediate", "urgent", "routine"] = Field(
+        ..., description="Response urgency: immediate=life-safety, urgent=5min, routine=15min"
+    )
+    rationale: str = Field(
+        ...,
+        description="One-sentence justification citing available evidence",
+    )
+
 
 # ---------------------------------------------------------------------------
 # Component schemas
@@ -55,6 +82,18 @@ class SignalAction(BaseModel):
     )
 
 
+class DiversionWaypoint(BaseModel):
+    """
+    A single named waypoint on a diversion route with approximate coordinates.
+    Used by the frontend to render the route on a map before the OSM graph
+    computes the precise polyline.
+    """
+
+    name: str = Field(..., description="Road name or landmark (e.g. 'Highway 99 South on-ramp')")
+    lat: float = Field(..., description="Approximate latitude (WGS-84)")
+    lng: float = Field(..., description="Approximate longitude (WGS-84)")
+
+
 class DiversionPlan(BaseModel):
     """
     An alternative routing recommendation to redistribute traffic away from
@@ -86,6 +125,13 @@ class DiversionPlan(BaseModel):
     evidence_refs: list[str] = Field(
         default_factory=list,
         description="References to supporting evidence (SOP chunk IDs, sensor readings, etc.)",
+    )
+    waypoints: list[DiversionWaypoint] = Field(
+        default_factory=list,
+        description=(
+            "Ordered lat/lng waypoints along the diversion route for map rendering. "
+            "Include 3–6 key points: start, intermediate turns, end."
+        ),
     )
 
 
@@ -186,6 +232,13 @@ class CopilotResponse(BaseModel):
         description=(
             "Identifiers of SOP chunks, historical incident summaries, sensor "
             "readings, or other documents used to ground the response."
+        ),
+    )
+    emergency_controls: list[EmergencyControl] = Field(
+        default_factory=list,
+        description=(
+            "Exactly 3 advisory emergency-service control recommendations, "
+            "generated only when overall_confidence > 0.5. Always requires officer approval."
         ),
     )
 

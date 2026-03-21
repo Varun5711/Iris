@@ -1,0 +1,42 @@
+## TASK: Generate Emergency Service Control Recommendations
+
+Based on the incident context provided, generate EXACTLY 3 specific, actionable emergency control recommendations for the responding agencies (traffic police, fire, EMS, or TMC).
+
+Each recommendation must:
+- Target a specific emergency service (police, fire, ems, or tmc)
+- State a concrete action in plain English — no jargon, no ambiguity
+- Assign a priority level: "immediate" (life-safety risk), "urgent" (within 5 min), or "routine" (within 15 min)
+- Include a one-sentence rationale citing available evidence
+
+IMPORTANT: These are ADVISORY suggestions for officer review. Use phrasing like "recommend deploying", "suggest notifying", "advise requesting" — never command language.
+
+OUTPUT FORMAT — respond with a JSON object:
+{
+  "emergency_controls": [
+    {
+      "service": "police|fire|ems|tmc",
+      "action": "string — specific advisory action",
+      "priority": "immediate|urgent|routine",
+      "rationale": "string — one sentence citing evidence"
+    },
+    {
+      "service": "police|fire|ems|tmc",
+      "action": "string — specific advisory action",
+      "priority": "immediate|urgent|routine",
+      "rationale": "string — one sentence citing evidence"
+    },
+    {
+      "service": "police|fire|ems|tmc",
+      "action": "string — specific advisory action",
+      "priority": "immediate|urgent|routine",
+      "rationale": "string — one sentence citing evidence"
+    }
+  ]
+}
+
+Rules:
+- Always produce exactly 3 controls — no more, no less
+- Distribute across different services where possible (avoid all 3 going to same agency)
+- Prioritize life-safety (injuries, fire risk, hazmat) above traffic management
+- If severity is "critical" or "high", at least one control must be "immediate" priority
+- Reference specific corridor IDs, intersection names, or sensor readings from context when available

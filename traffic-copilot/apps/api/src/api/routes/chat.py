@@ -246,10 +246,9 @@ async def ask_question(
 
         from src.integrations.redis.client import get_redis
         from src.integrations.groq.client import get_groq_client
-        from src.modules.copilot.prompt_loader import load_prompt
+        import src.modules.copilot.prompt_loader as prompt_loader
         redis_client = await get_redis()
         groq_client = get_groq_client()
-        prompt_loader = load_prompt
 
         chat_context = await _build_chat_context(incident_id, body.question, intent, db, redis_client, groq_client)
         answer_text = await _generate_chat_answer(incident_id, body.question, chat_context, intent, groq_client, prompt_loader)

@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     embedding_dim: int = 1024
     # Set to true to bypass all embedding APIs and use fast deterministic mock.
     embedding_use_mock: bool = False
+    # Vision analysis via HF Inference API (CLIP zero-shot image classification).
+    hf_vision_model: str = "google/vit-base-patch16-224"
+    vision_confidence_threshold: float = 0.3
 
     # ------------------------------------------------------------------ #
     # Persistence                                                          #
@@ -75,6 +78,14 @@ class Settings(BaseSettings):
     # ------------------------------------------------------------------ #
     replay_scenario_dir: str = "/app/data/replays/scenario_1"
     replay_interval_seconds: float = 3.0
+
+    # ------------------------------------------------------------------ #
+    # Twilio SMS                                                           #
+    # ------------------------------------------------------------------ #
+    twilio_account_sid: str = ""
+    twilio_auth_token: str = ""
+    twilio_from_number: str = ""
+    twilio_to_number: str = ""  # Default recipient; overridden per-request when phone_number is set
 
     # ------------------------------------------------------------------ #
     # Detection                                                            #
