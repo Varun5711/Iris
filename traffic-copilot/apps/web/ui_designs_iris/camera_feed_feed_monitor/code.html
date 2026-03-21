@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IRIS Intelligence - Camera Feeds</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#6ab04c",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#eceef0",
+                        "tertiary-fixed-dim": "#ffafd6",
+                        "surface-container-high": "#e6e8ea",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed": "#082102",
+                        "background": "#f8f9fb",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#7f1e5b",
+                        "surface-dim": "#d8dadc",
+                        "tertiary": "#9d3874",
+                        "on-tertiary-fixed": "#3c0028",
+                        "on-secondary-container": "#4e6a40",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#185200",
+                        "primary-fixed": "#abf688",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f8f9fb",
+                        "secondary": "#4a663d",
+                        "primary": "#2a6c0d",
+                        "surface-tint": "#2a6c0d",
+                        "on-tertiary-container": "#690749",
+                        "on-primary-fixed": "#062100",
+                        "on-surface": "#191c1e",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-variant": "#e0e3e5",
+                        "outline-variant": "#c1c9b7",
+                        "secondary-fixed": "#ccecb8",
+                        "on-primary-container": "#113f00",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface-variant": "#41493b",
+                        "secondary-fixed-dim": "#b0d09d",
+                        "inverse-primary": "#90d96f",
+                        "inverse-surface": "#2d3133",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffd8e8",
+                        "outline": "#717a6a",
+                        "tertiary-container": "#eb78b7",
+                        "primary-fixed-dim": "#90d96f",
+                        "surface": "#f8f9fb",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#334e27",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-container": "#c9e9b5",
+                        "on-tertiary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Public Sans"],
+                        "body": ["Public Sans"],
+                        "label": ["Public Sans"]
+                    },
+                    borderRadius: {"DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body { font-family: 'Public Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface">
+<!-- SideNavBar (Shared Component) -->
+<aside class="h-screen w-64 fixed left-0 top-0 border-r-0 bg-[#F2F4F6] dark:bg-slate-900 flex flex-col h-full p-4 font-public-sans text-sm tracking-tight z-50">
+<div class="mb-8 px-2 flex items-center gap-3">
+<div class="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-lg" data-icon="visibility">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-[#2D3436] dark:text-white leading-none">IRIS</h1>
+<p class="text-[10px] uppercase tracking-widest text-[#2D3436]/50 dark:text-slate-400 mt-1">Road Intelligence</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="warning">warning</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="map">map</span>
+<span>Live Map</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="smart_toy">smart_toy</span>
+<span>IRIS Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg" href="#">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+<span>Logs</span>
+</a>
+<a class="flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-800 text-[#2A6C0D] font-semibold rounded-lg shadow-sm" href="#">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+<span>Camera Feeds</span>
+</a>
+</nav>
+<div class="mt-auto pt-4 border-t border-[#F2F4F6] dark:border-slate-800">
+<div class="flex items-center gap-3 px-2">
+<div class="w-10 h-10 rounded-full bg-surface-container overflow-hidden">
+<img alt="User Profile" class="w-full h-full object-cover" data-alt="User Profile portrait of an administrator" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3vqjucqqRc2VXueHkV-YsA2dWryk0rpV38pD91nzzfUORXTqtymed376E3EnduIeQAqpXPcE1V1088XXtZ68dFUYM5uuVWQWRotcoxDc2oGYi1LqkaNG5l7K5k2B_89Frj0QW79mRvGLxD0XXNtk9f1Cr6T0O4-dBAqGbw-lA9c0aPh5-gyQBOAvImXJPKdwC0uAQYX8mx_-YeAYsgGeUoQFSexKY6hhkgvjnXMycbntndf3w8xTQ_9TQATLy_Wu6KbUmq9xZiz7M"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="font-semibold truncate">Administrator</p>
+<p class="text-xs text-[#2D3436]/50 dark:text-slate-400 truncate">System Operator</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- TopNavBar (Shared Component) -->
+<header class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-[#F8F9FB] dark:bg-slate-950 flex justify-between items-center px-8 border-b border-[#F2F4F6] dark:border-slate-800 z-40">
+<div class="flex items-center gap-6">
+<span class="text-lg font-bold text-[#2D3436] dark:text-white">IRIS Intelligence</span>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<div class="flex items-center gap-6 font-public-sans text-sm font-medium">
+<span class="text-[#2D3436]/60 flex items-center gap-2"><span class="material-symbols-outlined text-sm" data-icon="location_on">location_on</span> Location: Central District</span>
+<span class="text-[#2D3436]/60 flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-primary"></span> Status: Online</span>
+<span class="text-[#2D3436]/60">Updated 2m ago</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="p-2 text-on-surface-variant hover:text-primary transition-all opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="ml-64 pt-16 min-h-screen">
+<div class="p-8 space-y-8">
+<!-- Header Section -->
+<div class="flex justify-between items-end">
+<div>
+<h2 class="text-3xl font-bold tracking-tight text-on-surface">Camera Feeds</h2>
+<p class="text-on-surface-variant mt-1">Real-time surveillance monitoring for Central District traffic flow.</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-surface-container-lowest text-primary px-4 py-2 rounded-full text-sm font-semibold transition-all hover:bg-surface-container-low">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="grid_view">grid_view</span>
+                        Multiview
+                    </button>
+<button class="bg-gradient-to-br from-primary to-primary-container text-white px-6 py-2 rounded-full text-sm font-semibold shadow-sm hover:brightness-105 transition-all">
+<span class="material-symbols-outlined text-sm mr-1" data-icon="add_circle">add_circle</span>
+                        Link New Camera
+                    </button>
+</div>
+</div>
+<!-- Main Layout: Asymmetric Bento Grid -->
+<div class="grid grid-cols-12 gap-6">
+<!-- Primary Video Feed (Large) -->
+<div class="col-span-12 lg:col-span-8 space-y-4">
+<div class="relative aspect-video rounded-xl overflow-hidden bg-surface-container-highest shadow-sm group">
+<img alt="Camera Feed Live" class="w-full h-full object-cover" data-alt="High angle shot of a busy urban highway at dusk" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCyh_XEwyiA4d7CocMTyXl_y9JZXXLkH_NwOtvSnXTnGOtIuV4q-NecVZykJQdKARUxjtKCDAuxTwtoL3rrWQx6pdGAT22nfFHBgD3v4PM8g6utsT0-jmnFfsBVcFy3jiqXeHO-KjA3rFoRh7W5dcMX0xltsDFTt7_lSmEgQjP1t7YcAOWsWOwJaeXS1xpnPltZl-VlncSsH8dR9UDVzP_xkiOKPAS4VawYIScLt9h-d5hh4Oii9QZCJunBM6vXGwz093w5kwbmbMh_"/>
+<!-- Overlay UI: Top Bar -->
+<div class="absolute top-0 left-0 right-0 p-6 flex justify-between items-start bg-gradient-to-b from-black/50 to-transparent">
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="bg-red-600 w-2 h-2 rounded-full animate-pulse"></span>
+<span class="text-white font-bold text-lg tracking-tight">CAM-0428-NW</span>
+<span class="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded text-[10px] text-white font-bold uppercase tracking-widest">LIVE</span>
+</div>
+<span class="text-white/80 text-sm">Northwest Interchange • Central District</span>
+</div>
+<div class="flex items-center gap-3">
+<div class="bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-lg text-white text-xs font-mono">
+                                    2023-11-24 14:32:08 UTC
+                                </div>
+<button class="bg-white/20 backdrop-blur-md p-2 rounded-lg text-white hover:bg-white/40">
+<span class="material-symbols-outlined" data-icon="fullscreen">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Overlay UI: Telemetry Bottom -->
+<div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+<div class="flex gap-4">
+<div class="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
+<p class="text-[10px] uppercase text-white/60 mb-1">Bitrate</p>
+<p class="text-sm font-bold font-mono">4.2 Mbps</p>
+</div>
+<div class="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
+<p class="text-[10px] uppercase text-white/60 mb-1">Frame Rate</p>
+<p class="text-sm font-bold font-mono">60 FPS</p>
+</div>
+<div class="bg-black/40 backdrop-blur-xl p-3 rounded-xl border border-white/10 text-white min-w-[120px]">
+<p class="text-[10px] uppercase text-white/60 mb-1">Latency</p>
+<p class="text-sm font-bold font-mono">18ms</p>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="bg-white p-3 rounded-full text-primary shadow-lg hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="videocam">videocam</span>
+</button>
+<button class="bg-white p-3 rounded-full text-primary shadow-lg hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="mic">mic</span>
+</button>
+<button class="bg-error p-3 rounded-full text-white shadow-lg hover:scale-105 transition-transform">
+<span class="material-symbols-outlined" data-icon="emergency">emergency</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Telemetry Cards -->
+<div class="grid grid-cols-3 gap-4">
+<div class="bg-surface-container-lowest p-5 rounded-xl border-none shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 rounded-lg bg-secondary-container text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="radar">radar</span>
+</div>
+<span class="font-bold text-sm">Object Detection</span>
+</div>
+<div class="space-y-2">
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Vehicles</span>
+<span class="font-bold">42</span>
+</div>
+<div class="flex justify-between text-xs">
+<span class="text-on-surface-variant">Pedestrians</span>
+<span class="font-bold">12</span>
+</div>
+<div class="w-full bg-surface-container h-1 rounded-full mt-2">
+<div class="bg-primary w-[65%] h-full rounded-full"></div>
+</div>
+</div>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border-none shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 rounded-lg bg-secondary-container text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="thermostat">thermostat</span>
+</div>
+<span class="font-bold text-sm">Hardware Health</span>
+</div>
+<div class="flex items-end justify-between">
+<span class="text-2xl font-bold">42°C</span>
+<span class="text-[10px] text-primary font-bold bg-secondary-container px-2 py-0.5 rounded">OPTIMAL</span>
+</div>
+<p class="text-[10px] text-on-surface-variant mt-2">CPU Usage: 14% • RAM: 2.1GB</p>
+</div>
+<div class="bg-surface-container-lowest p-5 rounded-xl border-none shadow-sm">
+<div class="flex items-center gap-3 mb-4">
+<div class="p-2 rounded-lg bg-secondary-container text-primary">
+<span class="material-symbols-outlined text-lg" data-icon="history">history</span>
+</div>
+<span class="font-bold text-sm">Uptime</span>
+</div>
+<span class="text-2xl font-bold">142d 12h</span>
+<p class="text-[10px] text-on-surface-variant mt-2">Last restart: 4 months ago</p>
+</div>
+</div>
+</div>
+<!-- Sidebar: Selector & Map -->
+<div class="col-span-12 lg:col-span-4 space-y-6">
+<!-- Mini Map Card -->
+<div class="bg-surface-container-lowest rounded-xl p-2 shadow-sm relative overflow-hidden h-48">
+<img alt="Map Location" class="w-full h-full object-cover rounded-lg" data-alt="Satellite map view of city grid with camera icons" data-location="Seattle" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxV1oWNYeng0W0vpv3qhTBfwiGklmkVvtIbHMvLbzz7vm1tQVLY-vQGcR6d3jI3ZsDKSxZasD12D6qdN4h55UJ0ZaYLHBwRfLeGc2Ft4AC1wfEbEvvtFrTbgpyGNRRqevZgbvTQkfyhc0bx1fe5xy5d1_7gxVxHhiCXNfQnsZhX2v_LxcLJ31mv2hM-gau1TwSl-evdn2-XmLgFUNVQEpkUolXPr-jX9cSSmK-0U2QIsBs2HkHuCAessYaEoGvP42QKKim52tqicfq"/>
+<div class="absolute inset-0 bg-primary/5 pointer-events-none"></div>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-lg shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-sm text-primary" data-icon="location_on">location_on</span>
+<span class="text-xs font-bold">47.6062° N, 122.3321° W</span>
+</div>
+</div>
+</div>
+<!-- Camera Selector List -->
+<div class="bg-surface-container-lowest rounded-xl shadow-sm flex flex-col overflow-hidden">
+<div class="p-5 border-b border-surface-container flex justify-between items-center">
+<h3 class="font-bold text-sm">Nearby Cameras</h3>
+<button class="text-primary text-xs font-semibold">View All</button>
+</div>
+<div class="p-2 space-y-1">
+<!-- Active Item -->
+<div class="flex items-center gap-3 p-3 bg-secondary-container/30 rounded-lg border-l-4 border-primary">
+<div class="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
+<img alt="CAM-0428" class="w-full h-full object-cover" data-alt="Small thumbnail of the active highway camera feed" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBuALudZnI7Bw3U8rh7Ln_1StbBx_0EEGgCy8a2qcIEsxoNJMVPdvfjyxA7nvDRIV6OJOEhaAPTlA2d2Ka9RgSXtFXVVH0G-JYbWxEUed3m-_zphceVoIkHuj3MpfEGcuQJS8cxbPCwX8AA6_TV4TVbdxrGhOanCceEPABIwaYDGr4lL5-YxPDNUTbWdkTsj51TjaUpN31BPR7uvhE5-Rvl2q7o2i9MPVZcI4-2Z7AQ8tZQuJOXoqvuwHWwZzkZf-rfY0O5bhxqlPx7"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold truncate text-primary">CAM-0428-NW (Active)</p>
+<p class="text-[10px] text-on-surface-variant truncate">Northwest Interchange</p>
+</div>
+<span class="material-symbols-outlined text-primary text-sm" data-icon="radio_button_checked">radio_button_checked</span>
+</div>
+<!-- List Item -->
+<div class="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
+<div class="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
+<img alt="CAM-0912" class="w-full h-full object-cover opacity-80 group-hover:opacity-100" data-alt="Thumbnail showing a busy downtown street intersection" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtXBx50Kmi_1HdooPkwqGhqP2PBRnZ9qllAkHfguOllPa3mm3QltBVJsHXEJ-EAn72LnP9sIhEDNQJTI1esu0NhZ1pc-yTC2Dh40660owKxTRq2qDA-Ymr78qDYmQ6tRP6QdxiyJO1oNPTDv2oVQvQbzU8jqDUBPjq5fG_HYfaoW3XzKlUA6RGbtCvL8in9dWQwFkAr27NCvfwdrlJOJUKG2FEOFByzPNsp4E1-db3gn6dTZ-SOft3NFwMtUMZx44HjkrnS2XGpwYx"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold truncate text-on-surface">CAM-0912-ST</p>
+<p class="text-[10px] text-on-surface-variant truncate">South Station Crossing</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/30 text-sm group-hover:text-primary transition-colors" data-icon="play_circle">play_circle</span>
+</div>
+<!-- List Item -->
+<div class="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
+<div class="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
+<img alt="CAM-0115" class="w-full h-full object-cover opacity-80 group-hover:opacity-100" data-alt="Thumbnail showing a bridge over a river with light traffic" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCruXZJLSXPc1rgquYO8M3tMrjPRxChlz3Uraq7nq4fz3Gid04O2fBfjyFVKYkXndcgtjJqBDs8rscPhZUU2y75DG30h_K6CGautF8qqud0y1xU1DG0UFMSVQKhea_rqCOCYoyZuqmKZiYtbUT0YohVnD8Ytx3PmERE39XigetnqUXvkq7NJMp2PsGlSRJYq5-e_0H_olqg4K4ivmQ0-8i9Kp7v7DGYFNPjGxtLfbwQPIEB4EXDWsh59Ms1BG5YB9ieg2vcfNOlr8kq"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold truncate text-on-surface">CAM-0115-BR</p>
+<p class="text-[10px] text-on-surface-variant truncate">Harbor Bridge East</p>
+</div>
+<div class="px-2 py-0.5 rounded bg-error-container text-on-error-container text-[8px] font-bold">ALARM</div>
+</div>
+<!-- List Item -->
+<div class="flex items-center gap-3 p-3 hover:bg-surface-container-low rounded-lg transition-colors cursor-pointer group">
+<div class="w-16 h-10 rounded bg-surface-container overflow-hidden shrink-0">
+<img alt="CAM-0722" class="w-full h-full object-cover opacity-80 group-hover:opacity-100" data-alt="Thumbnail showing a tunnel entrance with glowing lights" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBE7GnvH1iFGyyfxQQ994G603e9C_WTJmm36u1gIz9vw9aoavVObGU9Iy6D0n3AD4YYYW5zl4ObwOVLJrpxsEwxu44TefU9QondRxw4xmbEv5WpzbKKKCZzt3rY3mGNkrIyW554eUHuOEmmEnqTsdlucaK0BXLMHtpY24XLBY8OwfAygxniDFAltnp5BWlIpjOSMlOoXZL2QDoUbWu6Jcyb9W-vdvRdLgbcjuCLV_fe417vhsIzlcse4yA2mrwl7lGT2nCPtdQye_bt"/>
+</div>
+<div class="flex-1 overflow-hidden">
+<p class="text-xs font-bold truncate text-on-surface">CAM-0722-TN</p>
+<p class="text-[10px] text-on-surface-variant truncate">West Metro Tunnel</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant/30 text-sm group-hover:text-primary transition-colors" data-icon="play_circle">play_circle</span>
+</div>
+</div>
+</div>
+<!-- IRIS Assistant Suggestion -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border-b-4 border-secondary-container">
+<div class="flex items-center gap-3 mb-4">
+<span class="material-symbols-outlined text-primary" data-icon="smart_toy">smart_toy</span>
+<h3 class="font-bold text-sm">IRIS Insight</h3>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed mb-4">
+                            Based on current traffic volume at <span class="text-primary font-bold">CAM-0428-NW</span>, I recommend adjusting signal timing at the next intersection to prevent bottlenecking.
+                        </p>
+<button class="w-full py-2 bg-secondary-container text-on-secondary-container rounded-lg text-xs font-bold hover:bg-primary-container hover:text-white transition-colors">
+                            Apply Optimized Signal
+                        </button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

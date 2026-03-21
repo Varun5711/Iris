@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>IRIS Assistant | Road Intelligence</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary-container": "#6ab04c",
+                        "on-error-container": "#93000a",
+                        "surface-container": "#eceef0",
+                        "tertiary-fixed-dim": "#ffafd6",
+                        "surface-container-high": "#e6e8ea",
+                        "on-background": "#191c1e",
+                        "on-secondary-fixed": "#082102",
+                        "background": "#f8f9fb",
+                        "error": "#ba1a1a",
+                        "on-tertiary-fixed-variant": "#7f1e5b",
+                        "surface-dim": "#d8dadc",
+                        "tertiary": "#9d3874",
+                        "on-tertiary-fixed": "#3c0028",
+                        "on-secondary-container": "#4e6a40",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#185200",
+                        "primary-fixed": "#abf688",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-bright": "#f8f9fb",
+                        "secondary": "#4a663d",
+                        "primary": "#2a6c0d",
+                        "surface-tint": "#2a6c0d",
+                        "on-tertiary-container": "#690749",
+                        "on-primary-fixed": "#062100",
+                        "on-surface": "#191c1e",
+                        "inverse-on-surface": "#eff1f3",
+                        "surface-variant": "#e0e3e5",
+                        "outline-variant": "#c1c9b7",
+                        "secondary-fixed": "#ccecb8",
+                        "on-primary-container": "#113f00",
+                        "surface-container-low": "#f2f4f6",
+                        "on-surface-variant": "#41493b",
+                        "secondary-fixed-dim": "#b0d09d",
+                        "inverse-primary": "#90d96f",
+                        "inverse-surface": "#2d3133",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed": "#ffd8e8",
+                        "outline": "#717a6a",
+                        "tertiary-container": "#eb78b7",
+                        "primary-fixed-dim": "#90d96f",
+                        "surface": "#f8f9fb",
+                        "on-secondary": "#ffffff",
+                        "on-secondary-fixed-variant": "#334e27",
+                        "surface-container-highest": "#e0e3e5",
+                        "secondary-container": "#c9e9b5",
+                        "on-tertiary": "#ffffff"
+                    },
+                    fontFamily: {
+                        "headline": ["Public Sans"],
+                        "body": ["Public Sans"],
+                        "label": ["Public Sans"]
+                    },
+                    borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .chat-scroll::-webkit-scrollbar { width: 4px; }
+        .chat-scroll::-webkit-scrollbar-track { background: transparent; }
+        .chat-scroll::-webkit-scrollbar-thumb { background: #e0e3e5; border-radius: 10px; }
+    </style>
+</head>
+<body class="bg-background text-on-surface min-h-screen flex">
+<!-- SideNavBar Shell -->
+<aside class="h-screen w-64 fixed left-0 top-0 flex flex-col p-4 bg-[#F2F4F6] dark:bg-slate-900 font-public-sans text-sm tracking-tight">
+<div class="flex items-center gap-3 mb-8 px-2">
+<div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white shadow-sm">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">visibility</span>
+</div>
+<div>
+<h1 class="text-xl font-bold text-[#2D3436] dark:text-white leading-tight">IRIS</h1>
+<p class="text-[10px] uppercase tracking-widest text-[#2D3436]/50 dark:text-slate-400 font-bold">Road Intelligence</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span>Incidents</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">map</span>
+<span>Live Map</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span>Analytics</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 bg-white dark:bg-slate-800 text-[#2A6C0D] font-semibold rounded-lg shadow-sm" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<span>IRIS Assistant</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">history</span>
+<span>Logs</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2.5 text-[#2D3436]/70 dark:text-slate-400 hover:bg-white/50 transition-colors rounded-lg group" href="#">
+<span class="material-symbols-outlined">videocam</span>
+<span>Camera Feeds</span>
+</a>
+</nav>
+<div class="mt-auto p-2 bg-white/40 dark:bg-slate-800/40 rounded-xl">
+<div class="flex items-center gap-3">
+<img class="w-10 h-10 rounded-full border-2 border-white shadow-sm object-cover" data-alt="Professional male administrator profile portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC-5tCDYNuzfNNGYdDcrOXlmRRcBt8qHgQkIa23l0BdHghJb-_yXpJOhrgVZ35BR_I9cL07XIYkjV-gNpOjJ_cOG2cEB9R6QQzU5SOmtfhhoDXUpRovqfdaL6qm3UUklgVDFwU2QqSIjL-KZfWMoVeqTsFBjtLCtOh00vlFOnXwcODDuwfRSPu1KYN_sdwNWQLYUYQXFtlA4BxRRe_al_6OwUZCfBDm1lD91PnndG03sbZLUWFETeuXxVW-c9MmEMAW6aOTyr1Q8T_A"/>
+<div class="overflow-hidden">
+<p class="font-bold text-on-surface truncate">Admin User</p>
+<p class="text-[10px] text-on-surface-variant truncate">District Supervisor</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-64 flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar Shell -->
+<header class="h-16 flex justify-between items-center px-8 bg-[#F8F9FB] dark:bg-slate-950 font-public-sans text-sm font-medium border-b border-[#F2F4F6] dark:border-slate-800">
+<div class="flex items-center gap-6">
+<h2 class="text-lg font-bold text-[#2D3436] dark:text-white">IRIS Intelligence</h2>
+<div class="h-4 w-[1px] bg-outline-variant/30"></div>
+<div class="flex gap-4 items-center text-[#2D3436]/60">
+<span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-primary shadow-[0_0_8px_rgba(42,108,13,0.5)]"></span> Location: Central District</span>
+<span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-base">cloud_done</span> Status: Online</span>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<button class="p-2 text-[#2D3436]/60 hover:text-[#2A6C0D] transition-all opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 text-[#2D3436]/60 hover:text-[#2A6C0D] transition-all opacity-80 hover:opacity-100">
+<span class="material-symbols-outlined">help_outline</span>
+</button>
+</div>
+</header>
+<!-- Chat Layout -->
+<div class="flex-1 flex overflow-hidden">
+<!-- LEFT: Chat History Sidebar -->
+<section class="w-80 flex flex-col bg-surface-container-low border-r border-outline-variant/10">
+<div class="p-6">
+<button class="w-full py-3 px-4 bg-white hover:bg-surface-container-lowest transition-all rounded-xl border border-outline-variant/20 flex items-center justify-center gap-2 text-primary font-semibold text-sm shadow-sm group">
+<span class="material-symbols-outlined text-lg transition-transform group-hover:rotate-90">add</span>
+                        New Intelligence Query
+                    </button>
+</div>
+<div class="flex-1 overflow-y-auto px-4 space-y-2 chat-scroll">
+<div class="px-2 pb-2 text-[11px] font-bold text-on-surface-variant uppercase tracking-widest">Recent Activity</div>
+<button class="w-full text-left p-3 rounded-xl bg-white border border-outline-variant/10 shadow-sm transition-all">
+<p class="text-sm font-medium text-on-surface truncate">M4 Congestion Analysis</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Today, 10:24 AM</p>
+</button>
+<button class="w-full text-left p-3 rounded-xl hover:bg-white/50 transition-all group">
+<p class="text-sm font-medium text-on-surface truncate group-hover:text-primary">Accident Impact: Exit 12</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Yesterday</p>
+</button>
+<button class="w-full text-left p-3 rounded-xl hover:bg-white/50 transition-all group">
+<p class="text-sm font-medium text-on-surface truncate group-hover:text-primary">Weekly Flow Reports</p>
+<p class="text-[11px] text-on-surface-variant mt-1">2 days ago</p>
+</button>
+<button class="w-full text-left p-3 rounded-xl hover:bg-white/50 transition-all group">
+<p class="text-sm font-medium text-on-surface truncate group-hover:text-primary">Camera 404 Malfunction</p>
+<p class="text-[11px] text-on-surface-variant mt-1">Oct 24, 2023</p>
+</button>
+</div>
+</section>
+<!-- CENTER: Conversation Thread -->
+<section class="flex-1 flex flex-col bg-surface relative">
+<!-- Conversation Area -->
+<div class="flex-1 overflow-y-auto p-8 chat-scroll">
+<div class="max-w-3xl mx-auto space-y-10">
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="max-w-[80%] bg-surface-container-highest px-5 py-3.5 rounded-2xl rounded-tr-none text-on-surface text-sm leading-relaxed">
+                                Can you analyze the current congestion levels on the North Circular near the Central Hospital? We have a high-priority ambulance dispatch scheduled for 14:00.
+                            </div>
+<span class="text-[10px] text-on-surface-variant mt-2 font-medium px-1">13:42 • Delivered</span>
+</div>
+<!-- IRIS Response -->
+<div class="flex flex-col items-start">
+<div class="flex items-center gap-2 mb-3">
+<div class="w-6 h-6 rounded bg-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+</div>
+<span class="text-xs font-bold text-on-surface tracking-wide uppercase">IRIS Assistant</span>
+</div>
+<!-- Main Answer Card -->
+<div class="w-full bg-surface-container-lowest rounded-2xl p-6 shadow-sm border border-outline-variant/10 relative overflow-hidden">
+<!-- AI Identity Glow -->
+<div class="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-secondary-container to-transparent opacity-50"></div>
+<div class="space-y-4">
+<p class="text-on-surface leading-relaxed">
+                                        I've analyzed real-time data from sensors 12-B and 14-A. <span class="text-primary font-semibold">Avoid the North Circular Main Route</span> for your 14:00 dispatch. Current traffic density is 22% higher than seasonal norms due to a minor lane closure.
+                                    </p>
+<!-- Reasoning Block -->
+<div class="bg-surface-container-low/50 rounded-xl p-4 border-l-4 border-primary/20">
+<h4 class="text-[11px] font-bold text-primary uppercase mb-2">Reasoning Engine</h4>
+<ul class="text-xs text-on-surface-variant space-y-2">
+<li class="flex items-start gap-2">
+<span class="w-1 h-1 rounded-full bg-primary-container mt-1.5"></span>
+                                                Live telemetry shows average speeds of 18mph between J4 and J5.
+                                            </li>
+<li class="flex items-start gap-2">
+<span class="w-1 h-1 rounded-full bg-primary-container mt-1.5"></span>
+                                                Weather impact (light rain) is increasing braking distances by 15%.
+                                            </li>
+</ul>
+</div>
+<!-- Data References -->
+<div class="grid grid-cols-2 gap-3 pt-2">
+<div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">videocam</span>
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase">Feed NC-12</p>
+<p class="text-xs text-primary font-medium">Clear Visibility</p>
+</div>
+</div>
+<div class="bg-surface-container-low rounded-lg p-3 flex items-center gap-3">
+<span class="material-symbols-outlined text-on-surface-variant text-lg">query_stats</span>
+<div>
+<p class="text-[10px] font-bold text-on-surface-variant uppercase">Flow Index</p>
+<p class="text-xs text-error font-medium">Critical (0.84)</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<span class="text-[10px] text-on-surface-variant mt-2 font-medium px-1">IRIS • Just Now</span>
+</div>
+</div>
+</div>
+<!-- BOTTOM: Input Area -->
+<div class="p-8 pt-0">
+<div class="max-w-3xl mx-auto">
+<div class="relative group">
+<div class="absolute inset-0 bg-primary/5 rounded-2xl blur-xl opacity-0 group-focus-within:opacity-100 transition-opacity"></div>
+<div class="relative bg-surface-container-lowest rounded-2xl shadow-lg border border-outline-variant/20 p-2 flex items-end gap-2">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<textarea class="flex-1 bg-transparent border-none focus:ring-0 text-sm py-2 px-2 resize-none placeholder:text-on-surface-variant/50" placeholder="Ask IRIS about traffic or incidents..." rows="1"></textarea>
+<div class="flex items-center gap-2 pb-1 pr-1">
+<button class="p-2 text-on-surface-variant hover:text-primary transition-colors">
+<span class="material-symbols-outlined">mic</span>
+</button>
+<button class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white flex items-center justify-center shadow-md hover:shadow-primary/20 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+</div>
+<p class="text-center text-[10px] text-on-surface-variant/60 mt-4 tracking-tight">IRIS can process live sensor data, camera feeds, and historical patterns to assist your decision making.</p>
+</div>
+</div>
+</section>
+</div>
+</main>
+</body></html>
