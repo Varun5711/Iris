@@ -46,7 +46,7 @@ replay:
 
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 smoke:
-	bash scripts/smoke_tests/run.sh
+	docker compose exec api python /app/scripts/smoke_tests/run.py
 
 # ── Kafka topic list ──────────────────────────────────────────────────────────
 topics:
