@@ -2,6 +2,7 @@
 Incident CRUD endpoints.
 
 POST   /incidents/                      Create a new incident manually
+POST   /incidents/voice-report          Transcribe audio via AssemblyAI, parse with Groq, create incident
 GET    /incidents/{incident_id}         Get a full IncidentSnapshot
 POST   /incidents/{incident_id}/events  Append a raw event to an existing incident
 GET    /incidents/                      List incidents filtered by status
@@ -185,6 +186,241 @@ async def create_incident(
 
     logger.info("incidents: created", incident_id=incident_id, severity=body.severity)
     return _row_to_incident_out(result)
+
+
+# ---------------------------------------------------------------------------
+# POST /incidents/voice-report
+# ---------------------------------------------------------------------------
+# Flow:
+#   1. Accept audio file upload OR public audio_url
+#   2. Upload to AssemblyAI and poll until transcript is ready
+#   3. Send transcript to Groq → extract severity, location, corridor_id, lat/lon
+#   4. Insert incident into DB + publish to Kafka (same as manual create)
+#   5. Return IncidentOut + transcript + parsed fields
+# ---------------------------------------------------------------------------
+
+_ASSEMBLYAI_BASE = "https://api.assemblyai.com"
+_ASSEMBLYAI_API_KEY = "16c351d64a87482c870b4f49068844d7"
+
+_GROQ_PARSE_SYSTEM = """You are a traffic incident parser.
+Given a radio/voice transcript from a traffic officer, extract incident details.
+Respond ONLY with a valid JSON object — no explanation, no markdown.
+Required fields:
+  severity: one of "low", "medium", "high", "critical"
+  description: concise incident description (max 200 chars)
+  corridor_id: best-guess corridor ID (e.g. AMD-CGR-01 for CG Road Ahmedabad, AMD-SGH-01 for SG Highway, AMD-ASH-01 for Ashram Road, AMD-NHW-08 for NH-48 Narol, AMD-DIN-01 for Drive-In Road, AMD-SPRR-01 for SP Ring Road, or UNKNOWN if unclear)
+  lat: decimal latitude (null if not mentioned)
+  lon: decimal longitude (null if not mentioned)
+  location_name: plain text location name extracted from transcript
+"""
+
+
+async def _assemblyai_transcribe(audio_bytes: bytes | None, audio_url: str | None) -> str:
+    """Upload audio to AssemblyAI (if bytes) or use URL directly, poll until done, return transcript text."""
+    import asyncio
+    import httpx
+
+    headers = {"authorization": _ASSEMBLYAI_API_KEY}
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Step 1: upload file if bytes provided
+        if audio_bytes is not None:
+            upload_resp = await client.post(
+                f"{_ASSEMBLYAI_BASE}/v2/upload",
+                headers=headers,
+                content=audio_bytes,
+            )
+            upload_resp.raise_for_status()
+            audio_url = upload_resp.json()["upload_url"]
+
+        if not audio_url:
+            raise ValueError("No audio source provided")
+
+        # Step 2: submit transcription job
+        submit_resp = await client.post(
+            f"{_ASSEMBLYAI_BASE}/v2/transcript",
+            headers=headers,
+            json={
+                "audio_url": audio_url,
+                "language_detection": True,
+                "speech_models": ["universal-3-pro", "universal-2"],
+            },
+        )
+        submit_resp.raise_for_status()
+        transcript_id = submit_resp.json()["id"]
+        polling_url = f"{_ASSEMBLYAI_BASE}/v2/transcript/{transcript_id}"
+
+        # Step 3: poll until completed (max 90s)
+        for _ in range(30):
+            await asyncio.sleep(3)
+            poll_resp = await client.get(polling_url, headers=headers)
+            poll_resp.raise_for_status()
+            result = poll_resp.json()
+            if result["status"] == "completed":
+                return result["text"] or ""
+            elif result["status"] == "error":
+                raise RuntimeError(f"AssemblyAI transcription failed: {result.get('error')}")
+
+    raise TimeoutError("AssemblyAI transcription timed out after 90s")
+
+
+async def _groq_parse_transcript(transcript: str) -> dict:
+    """Send transcript to Groq, return parsed incident fields."""
+    from src.integrations.groq.client import call_copilot_safe
+
+    result = await call_copilot_safe(
+        system_prompt=_GROQ_PARSE_SYSTEM,
+        user_prompt=f"Transcript: {transcript}",
+        timeout=15.0,
+    )
+    if result is None:
+        # Groq unavailable — return safe defaults
+        return {
+            "severity": "medium",
+            "description": transcript[:200],
+            "corridor_id": "UNKNOWN",
+            "lat": None,
+            "lon": None,
+            "location_name": "Unknown location",
+        }
+    return result
+
+
+@router.post("/voice-report", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def voice_report(
+    db: AsyncSession = Depends(get_db),
+    audio: UploadFile | None = None,
+    audio_url: str | None = Form(default=None),
+    officer_id: str = Form(default="voice_officer"),
+) -> dict:
+    """
+    Accept a voice/audio report from an officer.
+
+    Supply either:
+    - `audio`     — upload an audio file (mp3, wav, m4a, ogg)
+    - `audio_url` — public URL to an audio file
+
+    Flow:
+    1. Transcribe via AssemblyAI
+    2. Parse transcript with Groq → extract severity, corridor, lat/lon
+    3. Create incident in DB (same pipeline as POST /incidents/)
+    4. Publish to Kafka traffic.events.raw
+    5. Return IncidentOut + transcript + parsed details
+    """
+    from src.integrations.kafka.producer import publish
+    from src.integrations.kafka.topics import TRAFFIC_EVENTS_RAW
+
+    if audio is None and not audio_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either 'audio' file upload or 'audio_url' form field",
+        )
+
+    # 1. Transcribe
+    try:
+        audio_bytes = await audio.read() if audio is not None else None
+        transcript = await _assemblyai_transcribe(audio_bytes, audio_url)
+    except Exception as exc:
+        logger.error("voice_report: transcription failed", error=str(exc))
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}") from exc
+
+    logger.info("voice_report: transcript ready", transcript=transcript[:120])
+
+    # 2. Parse with Groq
+    parsed = await _groq_parse_transcript(transcript)
+
+    severity = str(parsed.get("severity") or "medium").lower()
+    if severity not in ("low", "medium", "high", "critical"):
+        severity = "medium"
+    description = str(parsed.get("description") or transcript[:200])
+    corridor_id = str(parsed.get("corridor_id") or "UNKNOWN")
+    lat = parsed.get("lat")
+    lon = parsed.get("lon")
+    location_name = str(parsed.get("location_name") or "")
+
+    # 3. Insert incident
+    incident_id = str(uuid4())
+    now = datetime.now(tz=timezone.utc)
+
+    if lat is not None and lon is not None:
+        location_expr = "ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)"
+        geo_params: dict[str, Any] = {"lat": float(lat), "lon": float(lon)}
+    else:
+        location_expr = "NULL"
+        geo_params = {}
+
+    try:
+        await db.execute(
+            text(
+                f"""
+                INSERT INTO incidents
+                    (id, status, severity, description, corridor_id, reporter_id,
+                     detection_confidence, location, created_at, updated_at)
+                VALUES
+                    (:id, 'active', :severity, :description, :corridor_id,
+                     :reporter_id, :confidence, {location_expr}, :now, :now)
+                """
+            ),
+            {
+                "id": incident_id,
+                "severity": severity,
+                "description": description,
+                "corridor_id": corridor_id if corridor_id != "UNKNOWN" else None,
+                "reporter_id": officer_id,
+                "confidence": 0.85,
+                "now": now,
+                **geo_params,
+            },
+        )
+    except Exception as exc:
+        await db.rollback()
+        logger.error("voice_report: DB insert failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to create incident") from exc
+
+    await _audit(db, incident_id, "INCIDENT_CREATED", officer_id, {
+        "severity": severity,
+        "source": "voice_report",
+        "transcript_length": len(transcript),
+    })
+    await db.commit()
+
+    # 4. Publish to Kafka
+    event = ManualIncidentEvent(
+        event_id=uuid4(),
+        source="manual",
+        event_time=now,
+        corridor_id=corridor_id if corridor_id != "UNKNOWN" else None,
+        lat=float(lat) if lat is not None else None,
+        lon=float(lon) if lon is not None else None,
+        severity=severity,
+        description=description,
+        reporter_id=officer_id,
+        payload={
+            "incident_id": incident_id,
+            "transcript": transcript,
+            "location_name": location_name,
+        },
+    )
+    try:
+        await publish(TRAFFIC_EVENTS_RAW, event.model_dump(mode="json"), key=incident_id)
+    except Exception as exc:
+        logger.warning("voice_report: Kafka publish failed (non-fatal)", error=str(exc))
+
+    logger.info("voice_report: incident created", incident_id=incident_id, severity=severity, corridor_id=corridor_id)
+
+    return {
+        "incident_id": incident_id,
+        "status": "active",
+        "severity": severity,
+        "description": description,
+        "corridor_id": corridor_id,
+        "location_name": location_name,
+        "lat": float(lat) if lat is not None else None,
+        "lon": float(lon) if lon is not None else None,
+        "transcript": transcript,
+        "parsed_by": "groq",
+        "created_at": now.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
