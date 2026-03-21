@@ -36,7 +36,12 @@ def get_graph():
     loader = _loader()
     if loader is None:
         return None
-    return loader.get_graph()
+    # Use sync accessor — loader.get_graph() is async and would return a coroutine
+    get_sync = getattr(loader, "get_graph_sync", None)
+    if get_sync is not None:
+        return get_sync()
+    # Fallback: access module-level _graph directly
+    return getattr(loader, "_graph", None)
 
 
 async def initialize_graph():

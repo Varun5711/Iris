@@ -591,19 +591,20 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
       "geometry": {
         "type": "LineString",
         "coordinates": [
-          [72.5855, 23.0269],
-          [72.581, 23.031],
-          [72.576, 23.035],
-          [72.582, 23.039],
-          [72.587, 23.042]
+          [72.585839, 23.026893],
+          [72.584492, 23.027474],
+          [72.583155, 23.027630],
+          "... 65 more real OSM road nodes ...",
+          [72.584611, 23.043155],
+          [72.586315, 23.043505]
         ]
       },
       "properties": {
         "feature_type": "diversion_route",
-        "source": "llm_waypoints",
-        "description": "Divert via Navrangpura → C.U. Shah College Road → Usmanpura Link Road",
-        "estimated_extra_minutes": 6.0,
-        "traffic_redistribution_pct": 50.0,
+        "source": "osm_waypoint_routing",
+        "description": "Both directions: divert via Navrangpura → C.U. Shah College Road → Usmanpura Link Road. Avoid CG Road between Swastik and Income Tax Cross Road entirely.",
+        "estimated_extra_minutes": 5.0,
+        "traffic_redistribution_pct": 30.0,
         "confidence": 0.88,
         "waypoint_names": [
           "Incident — Swastik Cross Roads",
@@ -612,6 +613,9 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
           "Usmanpura Link",
           "Income Tax Re-entry"
         ],
+        "road_names": ["Kasturba Gandhi Road"],
+        "distance_m": 4561.2,
+        "coordinate_count": 68,
         "stroke_color": "#3399ff",
         "stroke_width": 4,
         "stroke_dash": "8,4"
@@ -621,8 +625,8 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
   "meta": {
     "incident_point": true,
     "affected_segments_count": 108,
-    "diversion_source": "llm_waypoints",
-    "signal_actions_count": 2
+    "diversion_source": "osm_waypoint_routing",
+    "signal_actions_count": 5
   }
 }
 ```
@@ -632,9 +636,20 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
 | `feature_type` | Geometry | What it is |
 |----------------|----------|------------|
 | `incident_point` | `Point` | Exact incident location — place a marker here |
-| `diversion_route` | `LineString` | AI-generated diversion path — draw as dashed blue line |
+| `diversion_route` | `LineString` | Road-following diversion path (68+ real OSM nodes) — draw as dashed blue line |
 | `affected_segment` | `LineString` | Congested OSM road segment — draw as red/orange line |
 | `signal_action` | `Point` | Intersection requiring signal change — place a traffic light icon |
+
+**`diversion_route` extra properties:**
+| Property | Type | Meaning |
+|----------|------|---------|
+| `source` | `"osm_waypoint_routing"` \| `"osm_graph"` \| `"llm_waypoints"` | How coordinates were generated |
+| `road_names` | `string[]` | Actual road names along the route (e.g. `["Kasturba Gandhi Road"]`) |
+| `distance_m` | `float` | Total route length in metres |
+| `coordinate_count` | `int` | Number of real OSM road nodes in the LineString |
+| `waypoint_names` | `string[]` | Human-readable labels for the 4–6 anchor waypoints |
+
+> When `source === "osm_waypoint_routing"`, coordinates follow real Ahmedabad roads via NetworkX Dijkstra routing — suitable for display directly on OpenStreetMap/Mapbox tiles. When `source === "llm_waypoints"`, only 4–5 straight-line anchor points are available (fallback if graph routing fails).
 
 **`marker_color` by severity:**
 | Severity | Color |
@@ -659,28 +674,43 @@ const ws = new WebSocket(`ws://localhost:8000/ws/${incidentId}`);
 **Message shape — all server messages:**
 ```json
 {
-  "event_type": "incident_update",
+  "event_type": "state_updated",
   "incident_id": "d97b950c-4da5-4f18-95f9-65da1d411778",
-  "data": { ... }
+  "data": { ... full Kafka payload ... }
 }
 ```
 
-**`event_type` values:**
+**`event_type` values (exact strings from server):**
 
-| `event_type` | When fired | `data` contents |
-|-------------|-----------|-----------------|
-| `connected` | Immediately on connect | `{ "message": "Subscribed to incident {id}" }` |
-| `ping` | Every 30 seconds | `{}` |
-| `incident_update` | Incident status/severity changes | Full `IncidentOut` object |
-| `recommendation_ready` | AI copilot finishes generating | Full `RecommendationOut` object |
-| `alert_published` | Alert pushed to a channel | `AlertOut` object |
-| `segment_update` | Live congestion data updated | `{ "osm_way_id": 172932072, "delay_seconds": 67, "congestion_pct": 88.0 }` |
+| `event_type` | Kafka topic consumed | When fired | `data` contents |
+|-------------|---------------------|-----------|-----------------|
+| `connected` | — | Immediately on WS connect | `{ "message": "Subscribed to incident {id}" }` |
+| `ping` | — | Every 30 seconds | `{}` |
+| `state_updated` | `incident.state.updated` | Incident created/updated, sensor event processed, image confidence updated | Full incident snapshot: `{ incident_id, status, severity, detection_confidence, corridor_id, segments, queue_data }` |
+| `recommendation_ready` | `recommendation.ready` | Groq LLM finishes generating (~3–8s after state_updated) | `{ incident_id, action, signal_actions, diversion_plan, alert_drafts, confidence, narrative }` |
+| `approval_actioned` | `approval.actioned` | Officer approves or rejects a recommendation | `{ incident_id, recommendation_id, officer_id, action: "approved" \| "rejected" }` |
 
 **Client → Server (optional ping):**
 ```json
 { "event_type": "ping", "incident_id": "d97b950c-..." }
 ```
 Server replies with `{ "event_type": "pong", ... }`.
+
+**Vision upload → WS sequence (confidence >= 0.5):**
+```
+POST /incidents/{id}/vision
+  → HuggingFace ViT analysis (confidence: 0.73)
+  → Redis: vision:{incident_id} cached
+  → Kafka: traffic.events.raw (CameraMetaEvent)
+      → incident_processor: updates detection_confidence in DB
+      → Kafka: incident.state.updated
+          → WS MSG 1: event_type="state_updated"  ← arrives ~1s after upload
+              data.detection_confidence = 0.73
+          → copilot_trigger: Groq LLM call (reads vision confidence from Redis)
+              → Kafka: recommendation.ready
+                  → WS MSG 2: event_type="recommendation_ready"  ← arrives ~5-10s
+                      data.confidence = 0.73 (vision score incorporated)
+```
 
 ---
 
@@ -691,36 +721,49 @@ This is the exact sequence your frontend should implement:
 ```
 Step 1 — Create or receive incident
   POST /incidents/                     → get incident_id
+  (or incident already exists from Kafka feed replay)
 
-Step 2 — Open WebSocket (background)
+Step 2 — Open WebSocket immediately
   WS /ws/{incident_id}                 → subscribe to live updates
-  Listen for event_type: "recommendation_ready"
+  On event_type="state_updated"        → update incident card (severity, confidence badge)
+  On event_type="recommendation_ready" → show recommendation panel + redraw map
 
-Step 3 — Fetch recommendations
-  GET /recommendations/{incident_id}   → array of RecommendationOut
-  Display: narrative, signal_actions, diversion_plan.route_description,
-           diversion_plan.waypoints, alert_drafts
-
-Step 4 — (Optional) Upload image
-  POST /incidents/{incident_id}/vision  (multipart/form-data)
-  → VisionAnalysisOut.confidence shown as badge on incident card
-
-Step 5 — Show map
+Step 3 — Show map
   GET /incidents/{incident_id}/map-data → GeoJSON FeatureCollection
-  Render: incident_point as marker, diversion_route as dashed line
+  Render:
+    incident_point   → red marker at accident location
+    affected_segment → orange lines showing congested roads
+    diversion_route  → dashed blue line (68 real road coords, follows actual streets)
+    signal_action    → yellow traffic light markers at intersections
+
+Step 4 — Fetch recommendations
+  GET /incidents/{incident_id}/recommendations → array of RecommendationOut
+  Display: narrative, signal_actions[], diversion_plan.route_description,
+           diversion_plan.road_names, diversion_plan.distance_m, alert_drafts[]
+
+Step 5 — (Optional) Upload image from scene
+  POST /incidents/{incident_id}/vision  (multipart/form-data)
+  → VisionAnalysisOut.confidence shown as badge (e.g. "Camera: 73%")
+  → triggers WS state_updated then recommendation_ready automatically
+  → next recommendation includes vision confidence in overall_confidence
 
 Step 6 — Ask AI copilot
   POST /chat/
+  Body: { incident_id, question: "Is it safe to open the southbound lane now?" }
   → copilot_response.conversational_answer shown in chat bubble
+  → answer references real diversion data from DB (not generic)
 
 Step 7 — Approve recommendation
   POST /recommendations/{rec_id}/approve
-  → Required before alerts can be published
+  Body: { officer_id, note }
+  → Required before any alert can be published
+  → triggers WS event_type="approval_actioned"
 
 Step 8 — Publish all alerts + SMS
   POST /alerts/bulk-publish
   Body: { alert_ids: [...], officer_id: "...", phone_number: "+91..." }
-  → SMS delivered to officer's phone
+  → VMS / Radio / Social alerts published
+  → SMS sends radio alert text (max 130 chars) to officer's phone via Twilio
 ```
 
 ---

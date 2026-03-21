@@ -679,9 +679,13 @@ async def get_map_data(
               AND rec_type = 'composite'
               AND copilot_response IS NOT NULL
             ORDER BY
-              CASE WHEN copilot_response->'diversion_plan' IS NOT NULL
+              CASE WHEN jsonb_array_length(copilot_response->'diversion_plan'->'waypoints') > 0
+                   THEN 0
+                   WHEN copilot_response->'diversion_plan' IS NOT NULL
                         AND copilot_response->>'diversion_plan' != 'null'
-                   THEN 0 ELSE 1 END,
+                   THEN 1
+                   ELSE 2 END,
+              confidence DESC NULLS LAST,
               created_at DESC
             LIMIT 1
             """
@@ -823,12 +827,78 @@ async def get_map_data(
         except Exception as exc:
             logger.warning("map-data: diversion route compute failed (non-fatal)", error=str(exc))
 
-    # 3b. Fall back to LLM waypoints if OSM routing failed/unavailable
+    # 3b. Fall back to LLM waypoints — but snap each to real OSM nodes
+    #     and route between them so the line follows actual roads.
+    waypoint_osm_routed = False  # tracks actual outcome for meta
     if not diversion_added and diversion_plan:
         waypoints = diversion_plan.get("waypoints") or []
-        if len(waypoints) >= 2:
-            coords = [[wp["lng"], wp["lat"]] for wp in waypoints if wp.get("lat") and wp.get("lng")]
-            if len(coords) >= 2:
+        valid_wps = [wp for wp in waypoints if wp.get("lat") and wp.get("lng")]
+        if len(valid_wps) >= 2:
+            all_coords: list[list[float]] = []
+            road_names_collected: list[str] = []
+            total_dist_m = 0.0
+            routed_via_osm = False
+
+            if graph is not None:
+                try:
+                    from src.modules.routing.diversion import compute_diversion_routes
+                    # Snap each waypoint to nearest OSM node
+                    snapped: list[int] = []
+                    for wp in valid_wps:
+                        node = await get_node_nearest(float(wp["lat"]), float(wp["lng"]), graph)
+                        if node:
+                            snapped.append(node)
+
+                    # Route between consecutive snapped nodes
+                    if len(snapped) >= 2:
+                        for i in range(len(snapped) - 1):
+                            seg_routes = await compute_diversion_routes(
+                                origin_node=snapped[i],
+                                destination_node=snapped[i + 1],
+                                graph=graph,
+                                blocked_edges=[],
+                                k=1,
+                            )
+                            if seg_routes:
+                                seg_coords = seg_routes[0]["route_geojson"]["coordinates"]
+                                # Avoid duplicating join node between segments
+                                if all_coords:
+                                    seg_coords = seg_coords[1:]
+                                all_coords.extend(seg_coords)
+                                total_dist_m += seg_routes[0]["distance_m"]
+                                for rn in seg_routes[0].get("road_names", []):
+                                    if rn not in road_names_collected:
+                                        road_names_collected.append(rn)
+                        if len(all_coords) >= 2:
+                            routed_via_osm = True
+                            waypoint_osm_routed = True
+                except Exception as exc:
+                    logger.warning("map-data: waypoint OSM routing failed — using straight lines: %s", exc)
+
+            # If OSM routing worked, emit a proper road-following LineString
+            if routed_via_osm and len(all_coords) >= 2:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": all_coords},
+                    "properties": {
+                        "feature_type": "diversion_route",
+                        "source": "osm_waypoint_routing",
+                        "description": diversion_plan.get("route_description", ""),
+                        "estimated_extra_minutes": diversion_plan.get("estimated_extra_minutes"),
+                        "traffic_redistribution_pct": diversion_plan.get("traffic_redistribution_pct"),
+                        "confidence": diversion_plan.get("confidence"),
+                        "waypoint_names": [wp.get("name") for wp in valid_wps],
+                        "road_names": road_names_collected,
+                        "distance_m": round(total_dist_m, 1),
+                        "coordinate_count": len(all_coords),
+                        "stroke_color": "#3399ff",
+                        "stroke_width": 4,
+                        "stroke_dash": "8,4",
+                    },
+                })
+            else:
+                # Last resort: straight lines between waypoints
+                coords = [[wp["lng"], wp["lat"]] for wp in valid_wps]
                 features.append({
                     "type": "Feature",
                     "geometry": {"type": "LineString", "coordinates": coords},
@@ -839,7 +909,7 @@ async def get_map_data(
                         "estimated_extra_minutes": diversion_plan.get("estimated_extra_minutes"),
                         "traffic_redistribution_pct": diversion_plan.get("traffic_redistribution_pct"),
                         "confidence": diversion_plan.get("confidence"),
-                        "waypoint_names": [wp.get("name") for wp in waypoints],
+                        "waypoint_names": [wp.get("name") for wp in valid_wps],
                         "stroke_color": "#3399ff",
                         "stroke_width": 4,
                         "stroke_dash": "8,4",
@@ -890,7 +960,9 @@ async def get_map_data(
             "affected_segments_count": len(segments),
             "diversion_source": (
                 "osm_graph" if diversion_added
-                else ("llm_waypoints" if (diversion_plan and diversion_plan.get("waypoints")) else "none")
+                else "osm_waypoint_routing" if waypoint_osm_routed
+                else "llm_waypoints" if (diversion_plan and diversion_plan.get("waypoints"))
+                else "none"
             ),
             "signal_actions_count": len(signal_actions),
         },
