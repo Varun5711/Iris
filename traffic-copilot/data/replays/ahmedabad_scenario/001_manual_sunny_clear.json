@@ -1,0 +1,21 @@
+{
+  "event_id": "97932357-3a2b-4094-9cb0-b2e29be9bc14",
+  "source": "manual",
+  "event_time": "2026-03-21T17:39:04+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Sunny/Clear",
+    "total_accidents": 1185,
+    "persons_killed": 340,
+    "grievously_injured": 476,
+    "minor_injury": 310,
+    "incident_id": "e231d959-9053-4923-b715-ee3413573c73"
+  },
+  "severity": "critical",
+  "description": "Traffic Control incident — Sunny/Clear. 1185 recorded accidents, 340 fatalities, 476 grievously injured on SP Ring Road (West) (AMD-SPRR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

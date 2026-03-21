@@ -1,0 +1,21 @@
+{
+  "event_id": "83c7ead4-a727-4dbd-9ae2-90b6ee22d279",
+  "source": "manual",
+  "event_time": "2026-03-21T17:45:04+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Straight Road",
+    "total_accidents": 1074,
+    "persons_killed": 303,
+    "grievously_injured": 429,
+    "minor_injury": 271,
+    "incident_id": "16b70162-c48c-4cd5-9fd2-1f7491a943ab"
+  },
+  "severity": "critical",
+  "description": "Traffic Control incident — Straight Road. 1074 recorded accidents, 303 fatalities, 429 grievously injured on CG Road (AMD-CGR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

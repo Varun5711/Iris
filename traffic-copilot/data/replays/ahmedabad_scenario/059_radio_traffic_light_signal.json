@@ -1,0 +1,13 @@
+{
+  "event_id": "719d9e64-cbc0-4ec3-9000-12eca89b7a43",
+  "source": "radio",
+  "event_time": "2026-03-21T18:21:14+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "a8ee89a3-8e50-4a18-88ba-4115caa2406c"
+  },
+  "transcript": "Unit 3 reporting accident near traffic light signal intersection, lane fully blocked, ambulance requested, witness confirmed two vehicles involved",
+  "unit_id": "AMD-UNIT-15"
+}

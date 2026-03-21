@@ -1,0 +1,13 @@
+{
+  "event_id": "d6ef27f3-6f18-4033-b47e-1e333157fa57",
+  "source": "radio",
+  "event_time": "2026-03-21T17:45:14+00:00",
+  "corridor_id": "AMD-CGR-01",
+  "lat": 23.0269,
+  "lon": 72.5855,
+  "payload": {
+    "incident_id": "16b70162-c48c-4cd5-9fd2-1f7491a943ab"
+  },
+  "transcript": "Unit to dispatch — traffic incident at CG Road, Straight Road cause, response requested",
+  "unit_id": "AMD-UNIT-03"
+}

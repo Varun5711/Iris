@@ -1,0 +1,13 @@
+{
+  "event_id": "5ec1c978-abb1-4f76-a2e8-9d61bb8623bb",
+  "source": "radio",
+  "event_time": "2026-03-21T18:18:14+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "incident_id": "96dbb89e-23b7-4d4b-a06b-edb2e79e2a28"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SG Highway, Y cause, response requested",
+  "unit_id": "AMD-UNIT-14"
+}

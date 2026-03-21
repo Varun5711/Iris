@@ -1,0 +1,21 @@
+{
+  "event_id": "f345d6c8-cb34-4f97-8e83-ae24d6e6122b",
+  "source": "manual",
+  "event_time": "2026-03-21T17:51:04+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Uncontrolled",
+    "total_accidents": 434,
+    "persons_killed": 141,
+    "grievously_injured": 188,
+    "minor_injury": 163,
+    "incident_id": "df099c24-b266-422e-951f-d9603278af9f"
+  },
+  "severity": "critical",
+  "description": "Traffic Control incident — Uncontrolled. 434 recorded accidents, 141 fatalities, 188 grievously injured on Drive-in Road (AMD-DIN-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

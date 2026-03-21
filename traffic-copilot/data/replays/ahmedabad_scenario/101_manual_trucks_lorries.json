@@ -1,0 +1,21 @@
+{
+  "event_id": "7892b7f2-5f49-4f5d-9d6c-322bd7e03a49",
+  "source": "manual",
+  "event_time": "2026-03-21T18:54:04+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Trucks/Lorries",
+    "total_accidents": 3,
+    "persons_killed": 2,
+    "grievously_injured": 0,
+    "minor_injury": 2,
+    "incident_id": "5993fa4d-c7a7-4767-857f-172a7928262a"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Trucks/Lorries. 3 recorded accidents, 2 fatalities, 0 grievously injured on SG Highway (AMD-SGH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

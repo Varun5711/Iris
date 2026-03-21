@@ -1,0 +1,21 @@
+{
+  "event_id": "02345e3d-cad4-43ab-a38a-e598905baf5f",
+  "source": "manual",
+  "event_time": "2026-03-21T18:06:04+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "T",
+    "total_accidents": 96,
+    "persons_killed": 31,
+    "grievously_injured": 46,
+    "minor_injury": 27,
+    "incident_id": "5b13761b-2315-4bd9-a9fa-0aa4f3a49693"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — T. 96 recorded accidents, 31 fatalities, 46 grievously injured on Ashram Road (AMD-ASH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

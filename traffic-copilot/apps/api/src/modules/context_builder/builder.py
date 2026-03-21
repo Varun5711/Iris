@@ -142,9 +142,41 @@ async def _fetch_live_segments(
         return []
 
 
-async def _fetch_diversion(incident_id: str, redis_client: Any) -> dict | None:
-    """Return the cached diversion plan from Redis."""
-    return await _get_redis_json(redis_client, f"{_REDIS_DIVERSION_PREFIX}{incident_id}")
+async def _fetch_diversion(
+    incident_id: str,
+    redis_client: Any,
+    session: AsyncSession | None = None,
+) -> dict | None:
+    """Return diversion plan — Redis first, then latest DB recommendation fallback."""
+    cached = await _get_redis_json(redis_client, f"{_REDIS_DIVERSION_PREFIX}{incident_id}")
+    if cached:
+        return cached
+    # Fall back to DB: read copilot_response.diversion_plan from the best recommendation
+    if session is not None:
+        try:
+            row = await session.execute(
+                text("""
+                    SELECT copilot_response->'diversion_plan' AS dp
+                    FROM recommendations
+                    WHERE incident_id = CAST(:iid AS uuid)
+                      AND rec_type = 'composite'
+                      AND copilot_response->'diversion_plan' IS NOT NULL
+                      AND copilot_response->>'diversion_plan' != 'null'
+                    ORDER BY confidence DESC NULLS LAST, created_at DESC
+                    LIMIT 1
+                """),
+                {"iid": incident_id},
+            )
+            r = row.mappings().first()
+            if r and r["dp"]:
+                dp = r["dp"]
+                if isinstance(dp, str):
+                    import json as _j
+                    dp = _j.loads(dp)
+                return dp
+        except Exception as exc:
+            logger.warning("_fetch_diversion: DB fallback failed — %s", exc)
+    return None
 
 
 async def _fetch_signal_plan(incident_id: str, redis_client: Any) -> dict | None:
@@ -258,7 +290,7 @@ async def build_recommendation_context(
 
     live_segments, diversion, signal_plan, sop_chunks, similar_incidents, vision_analysis = (
         await _fetch_live_segments(incident_id, redis_client),
-        await _fetch_diversion(incident_id, redis_client),
+        await _fetch_diversion(incident_id, redis_client, session),
         await _fetch_signal_plan(incident_id, redis_client),
         await _fetch_sop_chunks(query_text, session),
         await _fetch_similar_incidents(query_text, session),
@@ -322,7 +354,7 @@ async def build_chat_context(
     incident_query = description or f"traffic incident {incident_id}"
 
     live_segments = await _fetch_live_segments(incident_id, redis_client)
-    diversion = await _fetch_diversion(incident_id, redis_client)
+    diversion = await _fetch_diversion(incident_id, redis_client, session)
     signal_plan = await _fetch_signal_plan(incident_id, redis_client)
     sop_chunks = await _fetch_sop_chunks(sop_query, session)
     similar_incidents = await _fetch_similar_incidents(incident_query, session)

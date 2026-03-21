@@ -1,0 +1,15 @@
+{
+  "event_id": "207488e9-c739-4a0e-8e5a-303e0a97b9cb",
+  "source": "sensor",
+  "event_time": "2026-03-21T17:57:19+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0489,
+  "lon": 72.5231,
+  "payload": {
+    "incident_id": "85f764db-3484-4d5b-a07a-0050c0f3a1ae"
+  },
+  "segment_id": "AMD-SEG-AMD-SPRR-01-002",
+  "speed_kmh": 27.0,
+  "free_flow_kmh": 60.0,
+  "occupancy_pct": 72.2
+}

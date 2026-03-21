@@ -1,0 +1,13 @@
+{
+  "event_id": "f5cd4729-639a-4c5d-b4cd-22fa74c03c88",
+  "source": "radio",
+  "event_time": "2026-03-21T18:15:14+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "incident_id": "afeca8d2-faba-40e6-9ed8-fc6bf1df5677"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SP Ring Road (West), Curved Road cause, response requested",
+  "unit_id": "AMD-UNIT-13"
+}

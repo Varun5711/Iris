@@ -1,0 +1,21 @@
+{
+  "event_id": "e34b8ac7-1417-4efa-bf6b-114c135bd470",
+  "source": "manual",
+  "event_time": "2026-03-21T18:30:04+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Bridge",
+    "total_accidents": 25,
+    "persons_killed": 17,
+    "grievously_injured": 7,
+    "minor_injury": 2,
+    "incident_id": "ec673bac-9410-4627-9fdb-79a879816e07"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Bridge. 25 recorded accidents, 17 fatalities, 7 grievously injured on NH-48 (Delhi-Mumbai Highway) (AMD-NHW-08). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

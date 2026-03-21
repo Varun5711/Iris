@@ -1,0 +1,21 @@
+{
+  "event_id": "bab18f65-0cdc-4dfc-961f-cc62d3f6fde6",
+  "source": "manual",
+  "event_time": "2026-03-21T18:36:04+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Drunken Driving/ Consumption of alcohol and drug",
+    "total_accidents": 15,
+    "persons_killed": 2,
+    "grievously_injured": 5,
+    "minor_injury": 8,
+    "incident_id": "3ae971ee-244f-4f36-a599-41182368a546"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Drunken Driving/ Consumption of alcohol and drug. 15 recorded accidents, 2 fatalities, 5 grievously injured on SG Highway (AMD-SGH-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

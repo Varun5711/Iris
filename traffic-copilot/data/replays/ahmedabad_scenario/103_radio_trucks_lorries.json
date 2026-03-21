@@ -1,0 +1,13 @@
+{
+  "event_id": "e5d9051f-090e-4182-90db-3313ffc31528",
+  "source": "radio",
+  "event_time": "2026-03-21T18:54:14+00:00",
+  "corridor_id": "AMD-SGH-01",
+  "lat": 23.0395,
+  "lon": 72.5039,
+  "payload": {
+    "incident_id": "5993fa4d-c7a7-4767-857f-172a7928262a"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SG Highway, Trucks/Lorries cause, response requested",
+  "unit_id": "AMD-UNIT-26"
+}

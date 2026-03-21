@@ -1,0 +1,13 @@
+{
+  "event_id": "f125c278-b3bb-4601-b4d9-49ef9bca7dd0",
+  "source": "radio",
+  "event_time": "2026-03-21T17:57:14+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "incident_id": "85f764db-3484-4d5b-a07a-0050c0f3a1ae"
+  },
+  "transcript": "Unit to dispatch — traffic incident at SP Ring Road (West), Four arm Junction cause, response requested",
+  "unit_id": "AMD-UNIT-07"
+}

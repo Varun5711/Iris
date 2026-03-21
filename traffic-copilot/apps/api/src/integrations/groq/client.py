@@ -91,17 +91,32 @@ async def call_copilot(system_prompt: str, user_prompt: str) -> dict:
     return parsed
 
 
-async def call_copilot_safe(system_prompt: str, user_prompt: str) -> dict | None:
+async def call_copilot_safe(
+    system_prompt: str,
+    user_prompt: str,
+    timeout: float = 12.0,
+) -> dict | None:
     """
-    Wrapper around :func:`call_copilot` that catches all exceptions.
+    Wrapper around :func:`call_copilot` that catches all exceptions and
+    enforces a hard timeout so 429-retry loops never hang the request.
 
     Returns
     -------
     dict | None
         Parsed response dict, or ``None`` if any error occurred.
     """
+    import asyncio
+
     try:
-        return await call_copilot(system_prompt, user_prompt)
+        return await asyncio.wait_for(
+            call_copilot(system_prompt, user_prompt),
+            timeout=timeout,
+        )
+    except asyncio.TimeoutError:
+        logger.warning(
+            "call_copilot_safe: timed out after %.0fs (likely rate-limited)", timeout
+        )
+        return None
     except Exception as exc:  # noqa: BLE001
         logger.warning("call_copilot_safe: Groq call failed — %s: %s", type(exc).__name__, exc)
         return None

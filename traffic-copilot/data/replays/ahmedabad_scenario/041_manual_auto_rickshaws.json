@@ -1,0 +1,21 @@
+{
+  "event_id": "73b33558-d270-464a-af6b-fc832b76ad70",
+  "source": "manual",
+  "event_time": "2026-03-21T18:09:04+00:00",
+  "corridor_id": "AMD-DIN-01",
+  "lat": 23.0446,
+  "lon": 72.528,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Auto Rickshaws",
+    "total_accidents": 88,
+    "persons_killed": 15,
+    "grievously_injured": 20,
+    "minor_injury": 40,
+    "incident_id": "98102a2c-8f18-47ff-a263-dc532bd6fe9b"
+  },
+  "severity": "high",
+  "description": "Traffic Control incident — Auto Rickshaws. 88 recorded accidents, 15 fatalities, 20 grievously injured on Drive-in Road (AMD-DIN-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}

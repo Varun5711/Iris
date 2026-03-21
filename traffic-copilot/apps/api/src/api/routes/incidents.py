@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.core.logging import get_logger
 from src.db.session import get_db
 from src.schemas.event import ManualIncidentEvent
-from src.schemas.incident import IncidentCreate, IncidentOut, IncidentSnapshot, SegmentOut, VisionAnalysisOut
+from src.schemas.incident import BulkVisionAnalysisOut, IncidentCreate, IncidentOut, IncidentSnapshot, SegmentOut, VisionAnalysisOut
 
 logger = get_logger(__name__)
 
@@ -424,6 +424,195 @@ async def analyse_incident_image(
 
 
 # ---------------------------------------------------------------------------
+# POST /incidents/{incident_id}/vision/bulk
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{incident_id}/vision/bulk",
+    response_model=BulkVisionAnalysisOut,
+    status_code=status.HTTP_200_OK,
+)
+async def analyse_incident_images_bulk(
+    incident_id: UUID,
+    images: list[UploadFile],
+    officer_id: str = Form(..., description="Badge number or user ID of the uploading officer"),
+    db: AsyncSession = Depends(get_db),
+) -> BulkVisionAnalysisOut:
+    """
+    Accept up to 10 images and classify each via the HuggingFace ViT model.
+
+    Processing is sequential to avoid HuggingFace Inference API rate limits.
+    Each result is cached in Redis at ``vision:{incident_id}:{index}``.
+    The image with the highest confidence also overwrites the primary key
+    ``vision:{incident_id}`` so the context builder and LLM always see the
+    best available signal.
+
+    A CameraMetaEvent is published to Kafka for every image where
+    ``incident_detected=True``.
+    """
+    from src.integrations.huggingface.vision import analyze_image
+    from src.integrations.kafka.producer import publish
+    from src.integrations.kafka.topics import TRAFFIC_EVENTS_RAW
+    from src.schemas.event import CameraMetaEvent
+    from src.integrations.redis.client import cache_set, vision_analysis_key
+
+    MAX_IMAGES = 10
+    iid = str(incident_id)
+
+    if len(images) > MAX_IMAGES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Too many images: received {len(images)}, maximum allowed is {MAX_IMAGES}.",
+        )
+
+    # Verify incident exists.
+    chk = await db.execute(text("SELECT id FROM incidents WHERE id = :id"), {"id": iid})
+    if chk.fetchone() is None:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+
+    results: list[VisionAnalysisOut] = []
+    kafka_published_count = 0
+    best_result: dict | None = None
+    best_idx: int = 0
+
+    for idx, image in enumerate(images):
+        image_bytes = await image.read()
+        if not image_bytes:
+            logger.warning("incidents: bulk vision skipping empty image", index=idx, filename=image.filename)
+            continue
+
+        try:
+            result = await analyze_image(image_bytes, filename=image.filename or f"upload_{idx}")
+        except Exception as exc:
+            logger.warning("incidents: bulk vision HF call failed", index=idx, error=str(exc))
+            continue
+
+        # Cache individual result at vision:{incident_id}:{idx}
+        per_image_key = f"{vision_analysis_key(iid)}:{idx}"
+        try:
+            await cache_set(
+                per_image_key,
+                {
+                    "incident_id": iid,
+                    "image_index": idx,
+                    "filename": image.filename,
+                    "confidence": result["confidence"],
+                    "incident_detected": result["incident_detected"],
+                    "top_label": result["top_label"],
+                    "scores": result["scores"],
+                    "model": result.get("model", ""),
+                    "source": result.get("source", ""),
+                    "officer_id": officer_id,
+                    "analysed_at": datetime.now(tz=timezone.utc).isoformat(),
+                },
+                ttl_seconds=86400,
+            )
+        except Exception as exc:
+            logger.warning("incidents: bulk vision Redis cache failed (non-fatal)", index=idx, error=str(exc))
+
+        # Track highest-confidence result
+        if best_result is None or result["confidence"] > best_result["confidence"]:
+            best_result = result
+            best_idx = idx
+
+        kafka_published = False
+        if result["incident_detected"]:
+            try:
+                camera_event = CameraMetaEvent(
+                    event_id=uuid4(),
+                    source="camera",
+                    event_time=datetime.now(tz=timezone.utc),
+                    camera_id=f"bulk_vision_{officer_id}_{idx}",
+                    lane_blocked=True,
+                    vehicle_count=0,
+                    incident_detected=True,
+                    confidence=result["confidence"],
+                    payload={
+                        "incident_id": iid,
+                        "top_label": result["top_label"],
+                        "scores": result["scores"],
+                        "officer_id": officer_id,
+                        "filename": image.filename,
+                        "bulk_index": idx,
+                    },
+                )
+                await publish(TRAFFIC_EVENTS_RAW, camera_event.model_dump(mode="json"), key=iid)
+                kafka_published = True
+                kafka_published_count += 1
+                logger.info(
+                    "incidents: bulk vision CameraMetaEvent published",
+                    incident_id=iid,
+                    index=idx,
+                    top_label=result["top_label"],
+                    confidence=result["confidence"],
+                )
+            except Exception as exc:
+                logger.warning("incidents: bulk vision Kafka publish failed (non-fatal)", index=idx, error=str(exc))
+
+        results.append(
+            VisionAnalysisOut(
+                incident_id=incident_id,
+                incident_detected=result["incident_detected"],
+                confidence=result["confidence"],
+                top_label=result["top_label"],
+                scores=result["scores"],
+                model=result["model"],
+                source=result["source"],
+                kafka_published=kafka_published,
+            )
+        )
+
+    # Overwrite primary vision key with highest-confidence result
+    if best_result is not None:
+        try:
+            await cache_set(
+                vision_analysis_key(iid),
+                {
+                    "incident_id": iid,
+                    "image_index": best_idx,
+                    "confidence": best_result["confidence"],
+                    "incident_detected": best_result["incident_detected"],
+                    "top_label": best_result["top_label"],
+                    "scores": best_result["scores"],
+                    "model": best_result.get("model", ""),
+                    "source": best_result.get("source", ""),
+                    "officer_id": officer_id,
+                    "analysed_at": datetime.now(tz=timezone.utc).isoformat(),
+                    "bulk_total": len(images),
+                },
+                ttl_seconds=86400,
+            )
+            logger.info(
+                "incidents: bulk vision best result cached",
+                incident_id=iid,
+                best_confidence=best_result["confidence"],
+                best_label=best_result["top_label"],
+            )
+        except Exception as exc:
+            logger.warning("incidents: bulk vision primary cache write failed (non-fatal)", error=str(exc))
+
+    # Single audit log for the entire bulk operation
+    await _audit(db, iid, "VISION_BULK_ANALYSIS", officer_id, {
+        "total_images": len(images),
+        "processed": len(results),
+        "kafka_published_count": kafka_published_count,
+        "highest_confidence": best_result["confidence"] if best_result else 0.0,
+        "best_label": best_result["top_label"] if best_result else None,
+    })
+    await db.commit()
+
+    return BulkVisionAnalysisOut(
+        incident_id=incident_id,
+        total_images=len(images),
+        processed=len(results),
+        results=results,
+        kafka_published_count=kafka_published_count,
+        highest_confidence=best_result["confidence"] if best_result else 0.0,
+    )
+
+
+# ---------------------------------------------------------------------------
 # GET /incidents/{incident_id}/map-data
 # ---------------------------------------------------------------------------
 
@@ -489,7 +678,11 @@ async def get_map_data(
             WHERE incident_id = CAST(:iid AS uuid)
               AND rec_type = 'composite'
               AND copilot_response IS NOT NULL
-            ORDER BY created_at DESC
+            ORDER BY
+              CASE WHEN copilot_response->'diversion_plan' IS NOT NULL
+                        AND copilot_response->>'diversion_plan' != 'null'
+                   THEN 0 ELSE 1 END,
+              created_at DESC
             LIMIT 1
             """
         ),

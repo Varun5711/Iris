@@ -1,0 +1,13 @@
+{
+  "event_id": "39ead7a0-42fb-445c-9f64-1fd85e479a07",
+  "source": "radio",
+  "event_time": "2026-03-21T17:54:14+00:00",
+  "corridor_id": "AMD-NHW-08",
+  "lat": 22.9964,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "b558dd14-6c2f-45c2-bf61-bf1beb2629ae"
+  },
+  "transcript": "Unit to dispatch — traffic incident at NH-48 (Delhi-Mumbai Highway), Pedestrian cause, response requested",
+  "unit_id": "AMD-UNIT-06"
+}

@@ -1,0 +1,13 @@
+{
+  "event_id": "481c3185-56b9-4d6a-b44d-cd42d9dcadc9",
+  "source": "radio",
+  "event_time": "2026-03-21T18:42:14+00:00",
+  "corridor_id": "AMD-ASH-01",
+  "lat": 23.03,
+  "lon": 72.58,
+  "payload": {
+    "incident_id": "82e0db96-b301-4bd0-800a-64d5b476b880"
+  },
+  "transcript": "Unit 9 calling dispatch — collision at flashing signal intersection, vehicle damage and injury, recommend closure of approach lane",
+  "unit_id": "AMD-UNIT-22"
+}

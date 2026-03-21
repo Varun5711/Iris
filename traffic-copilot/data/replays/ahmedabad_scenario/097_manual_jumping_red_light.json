@@ -1,0 +1,21 @@
+{
+  "event_id": "d1ba6802-c157-4bcc-8c34-2d31f8a9e4ed",
+  "source": "manual",
+  "event_time": "2026-03-21T18:51:04+00:00",
+  "corridor_id": "AMD-SPRR-01",
+  "lat": 23.0469,
+  "lon": 72.5211,
+  "payload": {
+    "city": "Ahmedabad",
+    "cause_category": "Traffic Control",
+    "cause_subcategory": "Jumping Red Light",
+    "total_accidents": 3,
+    "persons_killed": 0,
+    "grievously_injured": 3,
+    "minor_injury": 0,
+    "incident_id": "65cbefaa-be44-4a1b-ba7f-f8f0e6d2c96c"
+  },
+  "severity": "medium",
+  "description": "Traffic Control incident — Jumping Red Light. 3 recorded accidents, 0 fatalities, 3 grievously injured on SP Ring Road (West) (AMD-SPRR-01). Immediate traffic management required.",
+  "reporter_id": "csv_import_ahmedabad"
+}
