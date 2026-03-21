@@ -227,9 +227,6 @@ export default function IncidentsPage() {
           <button className="px-6 py-2.5 rounded-full font-bold text-sm text-primary hover:bg-primary/5 transition-colors">
             Export Report
           </button>
-          <button className="px-8 py-2.5 rounded-full signature-gradient text-white font-bold text-sm shadow-md active:scale-95 transition-all">
-            Initiate Protocol
-          </button>
         </div>
       </div>
 

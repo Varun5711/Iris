@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSettings } from "@/ui_lib/settings-context";
-import type { MapMarker } from "@/components/map/MapboxMap";
+import type { MapMarker, MapboxHandle } from "@/components/map/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 
 interface SensorMetrics {
   occupancy_pct: number;
@@ -66,8 +67,13 @@ const INCIDENT_MARKERS: MapMarker[] = [
 
 export default function DashboardPage() {
   const { settings } = useSettings();
+  const mapRef = useRef<MapboxHandle | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
+  const [searchValue, setSearchValue] = useState("");
+  const [searchResults, setSearchResults] = useState<{ place_name: string; center: [number, number] }[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -76,6 +82,25 @@ export default function DashboardPage() {
       setLastUpdated(new Date().toLocaleTimeString());
     } catch {}
   }, []);
+
+  // Fetch first active incident for copilot context
+  useEffect(() => {
+    fetch("/api/incidents").then(r => r.json()).then((incidents: { id: string }[]) => {
+      if (incidents?.[0]?.id) setActiveIncidentId(incidents[0].id);
+    }).catch(() => {});
+  }, []);
+
+  const handleSearch = async (q: string) => {
+    setSearchValue(q);
+    if (q.length < 3) { setSearchResults([]); setSearchOpen(false); return; }
+    try {
+      const res = await fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(q)}.json?access_token=${MAPBOX_TOKEN}&limit=4`);
+      const data = await res.json();
+      const results = (data.features ?? []).map((f: Record<string, unknown>) => ({ place_name: f.place_name as string, center: f.center as [number, number] }));
+      setSearchResults(results);
+      setSearchOpen(results.length > 0);
+    } catch {}
+  };
 
   useEffect(() => {
     load();
@@ -138,17 +163,54 @@ export default function DashboardPage() {
         {/* LEFT: Live Map */}
         <div className="flex-1 relative min-w-0">
           <MapboxMap
+            ref={mapRef}
             center={[-97.7431, 30.2672]}
             zoom={13}
             styleUrl="mapbox://styles/mapbox/light-v11"
             markers={markers}
             className="w-full h-full"
+            onMapReady={(h) => { mapRef.current = h; }}
           />
-          <div className="absolute top-4 left-4 z-10">
-            <div className="bg-white rounded-lg shadow-lg p-1.5 flex items-center gap-2 w-52">
-              <span className="material-symbols-outlined text-on-surface-variant text-sm ml-1">search</span>
-              <span className="text-xs text-on-surface-variant/50">Search segments...</span>
+          {/* Functional Search Bar */}
+          <div className="absolute top-4 left-4 z-10 w-60">
+            <div className="relative">
+              <div className="bg-white rounded-lg shadow-lg p-1.5 flex items-center gap-2">
+                <span className="material-symbols-outlined text-on-surface-variant text-sm ml-1">search</span>
+                <input
+                  className="flex-1 bg-transparent border-none text-xs outline-none text-on-surface placeholder:text-on-surface-variant/50 py-1"
+                  placeholder="Search segments..."
+                  value={searchValue}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  onFocus={() => searchResults.length > 0 && setSearchOpen(true)}
+                />
+                {searchValue && (
+                  <button onClick={() => { setSearchValue(""); setSearchResults([]); setSearchOpen(false); }} className="text-on-surface-variant">
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                )}
+              </div>
+              {searchOpen && searchResults.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-lg shadow-xl overflow-hidden z-20">
+                  {searchResults.map((r, i) => (
+                    <button key={i} onClick={() => { mapRef.current?.flyTo(r.center, 15); setSearchValue(r.place_name); setSearchOpen(false); }}
+                      className="w-full text-left px-3 py-2 hover:bg-surface-container-low transition-colors flex items-center gap-2 border-b border-outline-variant/10 last:border-0">
+                      <span className="material-symbols-outlined text-primary text-sm">location_on</span>
+                      <span className="text-xs text-on-surface leading-tight truncate">{r.place_name}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
+          {/* Zoom Controls */}
+          <div className="absolute top-4 right-4 z-10 flex flex-col bg-white rounded-lg shadow-lg">
+            <button onClick={() => mapRef.current?.zoomIn()} className="p-2 hover:bg-surface-container-low rounded-t-lg transition-colors text-on-surface-variant">
+              <span className="material-symbols-outlined text-sm">add</span>
+            </button>
+            <div className="w-6 h-px bg-outline-variant/20 mx-auto"></div>
+            <button onClick={() => mapRef.current?.zoomOut()} className="p-2 hover:bg-surface-container-low rounded-b-lg transition-colors text-on-surface-variant">
+              <span className="material-symbols-outlined text-sm">remove</span>
+            </button>
           </div>
         </div>
 
@@ -310,7 +372,7 @@ export default function DashboardPage() {
           <div className="px-4 pb-3">
             <div className="bg-surface-container-lowest rounded-xl overflow-hidden">
               <div className="relative h-32 bg-slate-900">
-                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDbuoLeNYnnqiAmzOxu8enM5UXNHhQe4EWbzM5FPoQ4jc3MpxRMdTLxoy4HUohnCwqtmoTM3UuFnHIjQZ1pgYkic9IHboqicYJcDD7wTmPhgRq5eP1f4ZPTPSAuinfDeIv1JFAs2WYCrsdCmbkipgUcLO7EJ7tTRUjErLW9aZYWr8GQEIMOBFVJ5sDKAwrz-EghzFxdF7wICxIgW0tXS5RG7emhROOwvJJX5qFCEdBcRKg9k8aOB6scC49Vq0fVovBTaxqnxqCW_1nh" alt="feed" className="w-full h-full object-cover opacity-90" />
+                <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80" alt="feed" className="w-full h-full object-cover opacity-90" />
                 <div className="absolute top-2 left-2 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                   <span className="text-[9px] font-bold text-white uppercase">LIVE · CAM-R42 · 7th Ave</span>
@@ -321,16 +383,16 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Copilot */}
-          <AICopilot />
+          <AICopilot incidentId={activeIncidentId} />
         </div>
       </div>
     </main>
   );
 }
 
-function AICopilot() {
+function AICopilot({ incidentId }: { incidentId: string | null }) {
   const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([
-    { role: "assistant", content: "I recommend re-timing the signals at 7th and Comal. A 'Smart Diversion' on Line 7 is also available." },
+    { role: "assistant", content: "IRIS AI ready. Ask about signal timing, diversion routes, or incident status." },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -342,18 +404,41 @@ function AICopilot() {
     setMessages((p) => [...p, { role: "user" as const, content: q }]);
     setLoading(true);
     try {
+      // Use backend /chat/ directly if incident ID available (returns conversational_answer)
+      const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+      if (incidentId) {
+        try {
+          const backendRes = await fetch(`${BACKEND}/chat/`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ incident_id: incidentId, question: q, officer_id: "officer-web" }),
+            signal: AbortSignal.timeout(15000),
+          });
+          if (backendRes.ok) {
+            const rec = await backendRes.json();
+            const answer = rec.copilot_response?.conversational_answer ?? rec.expected_impact ?? rec.action ?? "Processed.";
+            if (rec.copilot_response?.blocked_reason === "llm_unavailable") {
+              setMessages((p) => [...p, { role: "assistant", content: "AI engine rate-limited. Retrying via fallback..." }]);
+            } else {
+              setMessages((p) => [...p, { role: "assistant", content: answer }]);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch { /* fall through to Groq fallback */ }
+      }
+
+      // Groq fallback via /api/chat SSE stream
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: [...messages, { role: "user", content: q }] }),
       });
-      // Try JSON first (backend response)
       const ct = res.headers.get("content-type") ?? "";
       if (ct.includes("application/json")) {
         const d = await res.json();
         setMessages((p) => [...p, { role: "assistant" as const, content: d.answer ?? "Processed." }]);
       } else {
-        // SSE streaming
         const reader = res.body?.getReader();
         const decoder = new TextDecoder();
         let full = "";

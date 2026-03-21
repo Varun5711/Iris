@@ -1,14 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useSettings } from "@/ui_lib/settings-context";
 
 function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       onClick={() => onChange(!on)}
-      className={`relative inline-block w-12 h-6 rounded-full cursor-pointer transition-colors ${on ? "bg-primary" : "bg-surface-container-high"}`}
+      className={`relative flex-shrink-0 inline-block w-11 h-6 rounded-full cursor-pointer transition-colors duration-200 ${on ? "bg-primary" : "bg-surface-container-high"}`}
     >
-      <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${on ? "translate-x-7" : "translate-x-1"}`}></span>
+      <span
+        className="absolute top-[3px] h-[18px] w-[18px] bg-white rounded-full shadow-sm transition-all duration-200"
+        style={{ left: on ? "calc(100% - 21px)" : "3px" }}
+      />
     </button>
   );
 }
@@ -27,8 +31,6 @@ const USERS = [
   { name: "James Okafor", role: "Traffic Analyst", level: "Level 3", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuCtJB-EoDKd7V6K0rMmKrTrewIoACi_erQ1r0BxxU8G-MDUGgV6RWRHqvY7yEMJU_SM8HOr4O2tq2LoAUPZcR-aF2OpBLr_vTZ_YXYyHPiyMqnVI7hJMH9b8VZ0DKQ9QqkNwxwkf1dWJ4ZulRQqepSAL1N8skbBAA4fwhpldCL15P1YbvRzXbkfbx0xsepf39wK90bacbAfOFr7aE5NhpJXk1FGrOBnq5dIn-9CDPHtD4SoNatZ7__vTuu3KjRFJf-8tD5L6xy5Uqsx" },
   { name: "Sofia Park", role: "Supervisor", level: "Level 4", img: "https://lh3.googleusercontent.com/aida-public/AB6AXuDxb0g6A2PMSrhKa2z_wWduxege6jJj26YKu0ITgs7yK0WuKXuzYwrdpUchKdELG8FfjiuqcIGyLYWigdexo45_XSY84bsdYbRpw1BGHTc9AoeJVXF99NvdFCj2L5ah2eeOJLNp3cRz8ydSuJqLaH11KBSpCw2R4ZrOjRB1kdIIqRg6b86cQQwgGVDBZNyJ2nz0xS2Nw0xend9_H5utX9IguoohX9-knSoksCwSleWSzpoONo7p_LtyDHPlfucFHBd83Xxg33b7FPNE" },
 ];
-
-import { useState } from "react";
 
 export default function SettingsPage() {
   const { settings, update, save, saved } = useSettings();

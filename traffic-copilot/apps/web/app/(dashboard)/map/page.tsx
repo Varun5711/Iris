@@ -41,7 +41,6 @@ export default function MapPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [mapReady, setMapReady] = useState(false);
-  const [irisMsg, setIrisMsg] = useState("Active monitoring. Analysing all sectors...");
   const [backendOnline, setBackendOnline] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -79,14 +78,17 @@ export default function MapPage() {
   }, [loadIncidents]);
 
   // Load map GeoJSON from backend for a specific incident
+  // Uses /incidents/{id}/map-data which returns real NetworkX/OSM road-following coordinates
   const loadIncidentMapData = useCallback(async (incident: BackendIncident) => {
-    if (!mapHandleRef.current || !backendOnline) return;
+    if (!mapHandleRef.current) return;
     const h = mapHandleRef.current;
     setLoading(true);
 
     try {
-      // 1. Load GeoJSON feature collection
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000"}/incidents/${incident.id}/map-data`, { signal: AbortSignal.timeout(8000) });
+      const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
+
+      // 1. Load GeoJSON FeatureCollection — contains real OSM road-following routes
+      const res = await fetch(`${BACKEND}/incidents/${incident.id}/map-data`, { signal: AbortSignal.timeout(8000) });
       if (res.ok) {
         const geojson: GeoJSON.FeatureCollection = await res.json();
 
@@ -95,7 +97,7 @@ export default function MapPage() {
         const diversionFeatures = geojson.features.filter((f) => f.properties?.feature_type === "diversion_route");
         const signalFeatures = geojson.features.filter((f) => f.properties?.feature_type === "signal_action");
 
-        // Affected segments — orange thick line
+        // Affected segments — orange thick line (congested roads)
         if (affectedFeatures.length > 0) {
           h.addGeoJSONLayer({
             id: "affected-segments",
@@ -107,81 +109,58 @@ export default function MapPage() {
           });
         }
 
-        // Backend diversion route — blue dashed
-        if (diversionFeatures.length > 0) {
+        // Diversion routes — real OSM NetworkX Dijkstra road-following coordinates (50–130 nodes)
+        // Rendered per-route with different colors for selection
+        diversionFeatures.forEach((feature, i) => {
+          const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+          const layerId = `diversion-route-${i}`;
           h.addGeoJSONLayer({
-            id: "diversion-route-0",
-            sourceId: "diversion-route-0-src",
-            data: { type: "FeatureCollection", features: diversionFeatures },
+            id: layerId,
+            sourceId: `${layerId}-src`,
+            data: { type: "FeatureCollection", features: [feature] },
             layerType: "line",
-            paint: { "line-color": "#3B82F6", "line-width": 4, "line-opacity": 0.9, "line-dasharray": [2, 2] },
+            paint: {
+              "line-color": color,
+              "line-width": i === 0 ? 5 : 3.5,
+              "line-opacity": i === 0 ? 0.95 : 0.75,
+              "line-dasharray": [4, 2],
+            },
             layout: { "line-cap": "round", "line-join": "round" },
           });
-        }
+        });
 
-        // Signal action circles — yellow
+        // Signal action circles — yellow traffic-light icons at intersections
         if (signalFeatures.length > 0) {
           h.addGeoJSONLayer({
             id: "signal-circles",
             sourceId: "signal-circles-src",
             data: { type: "FeatureCollection", features: signalFeatures },
             layerType: "circle",
-            paint: { "circle-color": "#EAB308", "circle-radius": 10, "circle-stroke-color": "#fff", "circle-stroke-width": 2, "circle-opacity": 0.9 },
+            paint: { "circle-color": "#EAB308", "circle-radius": 10, "circle-stroke-color": "#fff", "circle-stroke-width": 2.5, "circle-opacity": 0.95 },
           });
         }
+
+        // Build route options UI from diversion features (using their metadata, not waypoints)
+        const routes: RouteOption[] = diversionFeatures.slice(0, 5).map((f, i) => ({
+          idx: i,
+          color: ROUTE_COLORS[i % ROUTE_COLORS.length],
+          label: (f.properties?.description as string) || (f.properties?.route_description as string) || `Route ${i + 1} via ${(f.properties?.road_names as string[])?.[0] ?? "alternate road"}`,
+          extra_minutes: (f.properties?.estimated_extra_minutes as number) ?? 5 + i * 2,
+          redistribution: (f.properties?.traffic_redistribution_pct as number) ?? 30 - i * 5,
+          waypoints: [],
+          selected: i === 0,
+        }));
+        setRouteOptions(routes);
+        setBackendOnline(true);
       }
 
-      // 2. Load recommendations for additional route options
-      const recRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000"}/recommendations/${incident.id}`, { signal: AbortSignal.timeout(8000) });
+      // 2. Fetch recommendations for signal action info (no route rendering — routes come from /map-data)
+      const recRes = await fetch(`${BACKEND}/recommendations/${incident.id}`, { signal: AbortSignal.timeout(6000) });
       if (recRes.ok) {
         const recs: BackendRecommendation[] = await recRes.json();
-        const withPlan = recs.filter((r) => r.copilot_response?.diversion_plan?.waypoints?.length);
-
-        const routes: RouteOption[] = withPlan.slice(0, 5).map((rec, i) => {
-          const plan = rec.copilot_response!.diversion_plan!;
-          // Build GeoJSON LineString from waypoints
-          const coords = plan.waypoints.map((w) => [w.lng, w.lat] as [number, number]);
-          if (coords.length >= 2) {
-            const layerId = `diversion-route-${i + 1}`;
-            h.addGeoJSONLayer({
-              id: layerId,
-              sourceId: `${layerId}-src`,
-              data: {
-                type: "FeatureCollection",
-                features: [{
-                  type: "Feature",
-                  geometry: { type: "LineString", coordinates: coords },
-                  properties: { route_index: i, label: plan.route_description },
-                }],
-              },
-              layerType: "line",
-              paint: {
-                "line-color": ROUTE_COLORS[(i + 1) % ROUTE_COLORS.length],
-                "line-width": 3,
-                "line-opacity": 0.8,
-                "line-dasharray": [3, 1],
-              },
-              layout: { "line-cap": "round", "line-join": "round" },
-            });
-          }
-
-          return {
-            idx: i,
-            color: ROUTE_COLORS[(i + 1) % ROUTE_COLORS.length],
-            label: plan.route_description || `Route ${i + 1}`,
-            extra_minutes: plan.estimated_extra_minutes,
-            redistribution: plan.traffic_redistribution_pct,
-            waypoints: plan.waypoints,
-            selected: false,
-          };
-        });
-
-        setRouteOptions(routes);
-
-        // Update IRIS message
         const signalActions = recs.flatMap((r) => r.copilot_response?.signal_actions ?? []);
         if (signalActions.length > 0) {
-          setIrisMsg(`${signalActions.length} signal re-timing recommendation(s) detected. ${routes.length} diversion route(s) available.`);
+          console.log(`[map] ${signalActions.length} signal actions from backend`);
         }
       }
     } catch (e) {
@@ -189,7 +168,8 @@ export default function MapPage() {
     } finally {
       setLoading(false);
     }
-  }, [backendOnline]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // When active incident changes, load its map data
   useEffect(() => {
@@ -260,9 +240,14 @@ export default function MapPage() {
 
   const selectRoute = (idx: number) => {
     setRouteOptions((p) => p.map((r, i) => ({ ...r, selected: i === idx })));
-    const route = routeOptions[idx];
-    if (route?.waypoints?.[0]) {
-      mapHandleRef.current?.flyTo([route.waypoints[0].lng, route.waypoints[0].lat], 14);
+    // Highlight selected route by changing opacity; others dim
+    ROUTE_COLORS.forEach((_, i) => {
+      const visible = i === idx || true; // keep all visible, selection shown by UI
+      mapHandleRef.current?.setLayerVisibility(`diversion-route-${i}`, visible);
+    });
+    // Fly to active incident location
+    if (activeIncident?.location_lat && activeIncident?.location_lon) {
+      mapHandleRef.current?.flyTo([activeIncident.location_lon, activeIncident.location_lat], 14);
     }
   };
 
@@ -464,39 +449,33 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* ── IRIS Mini Overlay ── */}
-      <div className="absolute bottom-6 left-6 z-20">
-        <div className="bg-white rounded-xl shadow-2xl p-4 w-72 border-b-4 border-secondary-container">
-          <div className="flex items-center gap-3 mb-3">
-            <div className="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-primary">
-              <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
+      {/* ── Active Incident Details (bottom-left) ── */}
+      {activeIncident && (
+        <div className="absolute bottom-20 left-6 z-20">
+          <div className="bg-white rounded-xl shadow-2xl p-4 w-72">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+                <span className="text-xs font-bold text-on-surface">Active Incident</span>
+              </div>
+              <button onClick={() => setActiveIncident(null)} className="text-on-surface-variant hover:text-primary">
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
             </div>
-            <div>
-              <h4 className="text-xs font-bold text-on-surface">IRIS Intelligence</h4>
-              <p className="text-[10px] text-on-surface-variant">Active Monitoring</p>
+            <p className="text-[11px] text-on-surface-variant leading-relaxed mb-2">
+              {(activeIncident as unknown as Record<string,string>).description ?? "Incident under monitoring"}
+            </p>
+            <div className="flex gap-2">
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${activeIncident.severity === "critical" ? "bg-error-container text-on-error-container" : "bg-primary/10 text-primary"}`}>
+                {activeIncident.severity?.toUpperCase()}
+              </span>
+              <span className="text-[10px] text-on-surface-variant px-2 py-0.5 bg-surface-container rounded-full">
+                {activeIncident.corridor_id ?? "Unknown Corridor"}
+              </span>
             </div>
           </div>
-          <p className="text-[11px] leading-relaxed text-on-surface-variant bg-surface-container-low p-2 rounded-lg italic">
-            &ldquo;{irisMsg}&rdquo;
-          </p>
-          {activeIncident && (
-            <div className="mt-2 flex gap-2">
-              <button
-                onClick={() => setActiveIncident(null)}
-                className="flex-1 py-1.5 rounded-full bg-surface-container-low text-on-surface-variant text-[10px] font-bold hover:bg-surface-container transition-colors"
-              >
-                Clear
-              </button>
-              <button
-                onClick={() => activeIncident && loadIncidentMapData(activeIncident)}
-                className="flex-1 py-1.5 rounded-full bg-primary text-white text-[10px] font-bold hover:brightness-110"
-              >
-                Refresh
-              </button>
-            </div>
-          )}
         </div>
-      </div>
+      )}
 
       {/* ── Signal Actions Panel (from recommendations) ── */}
       {routeOptions.length === 0 && incidents.length > 0 && (

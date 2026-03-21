@@ -28,8 +28,22 @@ export interface AnalyticsData {
   incidentCount: number;
   signalEfficiency: number;
   responseTime: number;
+  avgCongestion: number;
+  avgDelay: number;
+  trafficDensity: number;
+  totalSegments: number;
+  criticalSegments: number;
+  backendOnline: boolean;
   trafficTrend: { time: string; count: number }[];
   districtSpeeds: { district: string; speed: number }[];
+  sensorMetrics: {
+    occupancy_pct: number;
+    free_flow_speed: number;
+    current_speed: number;
+    volume_per_hour: number;
+    headway_seconds: number;
+    lane_utilization: number;
+  };
 }
 
 export interface ChatMessage {
