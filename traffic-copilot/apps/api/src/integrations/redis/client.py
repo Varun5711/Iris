@@ -190,3 +190,12 @@ def sensor_speed_key(segment_id: str) -> str:
     ``sensor:{segment_id}:speed``
     """
     return f"sensor:{segment_id}:speed"
+
+
+def vision_analysis_key(incident_id: str) -> str:
+    """
+    Latest vision-model analysis result for an incident (from POST /vision).
+
+    ``vision:{incident_id}``
+    """
+    return f"vision:{incident_id}"

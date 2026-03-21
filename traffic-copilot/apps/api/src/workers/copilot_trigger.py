@@ -189,11 +189,10 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
     from src.db.session import AsyncSessionLocal
     from src.integrations.redis.client import get_redis
     from src.integrations.groq.client import get_groq_client
-    from src.modules.copilot.prompt_loader import load_prompt
+    import src.modules.copilot.prompt_loader as prompt_loader
 
     redis_client = await get_redis()
     groq_client = get_groq_client()
-    prompt_loader = load_prompt
 
     # ------------------------------------------------------------------ #
     # 2. Build context                                                     #

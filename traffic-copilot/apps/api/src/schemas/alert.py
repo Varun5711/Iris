@@ -64,6 +64,47 @@ class ApprovalRequest(BaseModel):
         max_length=1000,
         description="Optional free-text justification or modification note",
     )
+    phone_number: str | None = Field(
+        default=None,
+        description="If set, send an SMS notification to this number after publishing",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class BulkPublishRequest(BaseModel):
+    """Request body for POST /alerts/bulk-publish."""
+
+    alert_ids: list[UUID] = Field(
+        ..., min_length=1, description="List of alert UUIDs to publish in one operation"
+    )
+    officer_id: str = Field(..., min_length=1, description="Badge number or user ID of the publishing officer")
+    phone_number: str | None = Field(
+        default=None,
+        description="If set, send a consolidated SMS to this number after all alerts are published",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
+class BulkPublishItemOut(BaseModel):
+    """Per-alert result inside a bulk-publish response."""
+
+    alert_id: UUID
+    status: str = Field(..., description="'published', 'skipped', or 'error'")
+    channel: str | None = None
+    message: str | None = None
+    detail: str | None = Field(default=None, description="Error or skip reason when status != 'published'")
+
+
+class BulkPublishOut(BaseModel):
+    """Response for POST /alerts/bulk-publish."""
+
+    published_count: int
+    skipped_count: int
+    error_count: int
+    results: list[BulkPublishItemOut]
+    sms: dict | None = Field(default=None, description="SMS send result, present when phone_number was supplied")
 
     model_config = {"populate_by_name": True}
 

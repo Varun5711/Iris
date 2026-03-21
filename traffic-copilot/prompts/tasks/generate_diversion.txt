@@ -1,13 +1,16 @@
 Based on the incident context and available road network data, recommend the best diversion route.
 
-Include:
+Include these fields in the "diversion_plan" section:
 - route_description: clear turn-by-turn direction description using road names
 - estimated_extra_minutes: realistic time addition for drivers
 - traffic_redistribution_pct: estimated % of current incident-route traffic that will divert
 - evidence_refs: cite the specific sensor IDs or data points that support this recommendation
 - confidence: 0.0-1.0 based on how complete the routing data is
+- waypoints: ordered array of 3–6 key lat/lng points defining the diversion route geometry for map rendering.
+  Each waypoint must be: {"name": "road or landmark name", "lat": <float>, "lng": <float>}
+  Include: origin point (incident location), intermediate turn points, and final merge-back point.
+  Use approximate real-world coordinates based on the corridor and road names in the context.
 
-Context:
-{context}
-
-Return ONLY the "diversion_plan" object of the CopilotResponse JSON.
+IMPORTANT: The waypoints array is REQUIRED for frontend map rendering. Provide realistic coordinates
+based on the corridor_id and road names available in the context. If exact coordinates are unknown,
+use plausible approximate coordinates near the incident corridor.

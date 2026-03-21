@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 _REDIS_SEGMENT_PREFIX = "segment:"
 _REDIS_DIVERSION_PREFIX = "diversion:"
 _REDIS_SIGNAL_PREFIX = "signal_plan:"
+_REDIS_VISION_PREFIX = "vision:"
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +152,11 @@ async def _fetch_signal_plan(incident_id: str, redis_client: Any) -> dict | None
     return await _get_redis_json(redis_client, f"{_REDIS_SIGNAL_PREFIX}{incident_id}")
 
 
+async def _fetch_vision_analysis(incident_id: str, redis_client: Any) -> dict | None:
+    """Return the latest vision-model analysis result from Redis (if any)."""
+    return await _get_redis_json(redis_client, f"{_REDIS_VISION_PREFIX}{incident_id}")
+
+
 # ---------------------------------------------------------------------------
 # pgvector helpers
 # ---------------------------------------------------------------------------
@@ -250,12 +256,13 @@ async def build_recommendation_context(
     )
     query_text = description or f"traffic incident {incident_id}"
 
-    live_segments, diversion, signal_plan, sop_chunks, similar_incidents = (
+    live_segments, diversion, signal_plan, sop_chunks, similar_incidents, vision_analysis = (
         await _fetch_live_segments(incident_id, redis_client),
         await _fetch_diversion(incident_id, redis_client),
         await _fetch_signal_plan(incident_id, redis_client),
         await _fetch_sop_chunks(query_text, session),
         await _fetch_similar_incidents(query_text, session),
+        await _fetch_vision_analysis(incident_id, redis_client),
     )
 
     return {
@@ -266,6 +273,7 @@ async def build_recommendation_context(
         "signal_plan": signal_plan,
         "sop_chunks": sop_chunks,
         "similar_incidents": similar_incidents,
+        "vision_analysis": vision_analysis,
     }
 
 
@@ -319,6 +327,7 @@ async def build_chat_context(
     sop_chunks = await _fetch_sop_chunks(sop_query, session)
     similar_incidents = await _fetch_similar_incidents(incident_query, session)
     alert_templates = await _fetch_alert_templates(incident_query, session)
+    vision_analysis = await _fetch_vision_analysis(incident_id, redis_client)
 
     return {
         "incident_id": incident_id,
@@ -330,6 +339,7 @@ async def build_chat_context(
         "sop_chunks": sop_chunks,
         "similar_incidents": similar_incidents,
         "alert_templates": alert_templates,
+        "vision_analysis": vision_analysis,
     }
 
 
@@ -370,6 +380,28 @@ def format_context_for_prompt(context: dict) -> str:
         lines.append(f"Description: {incident.get('description', 'N/A')}")
         lines.append(f"Created:     {incident.get('created_at', 'N/A')}")
         lines.append(f"Confidence:  {incident.get('detection_confidence', 0.0):.2f}")
+        sections.append("\n".join(lines))
+
+    # ---- Vision analysis (camera AI signal) ---------------------------------
+    vision = context.get("vision_analysis")
+    if vision:
+        lines = ["=== VISION ANALYSIS (camera AI) ==="]
+        lines.append(f"Model:              {vision.get('model', 'unknown')}")
+        lines.append(f"Top label:          {vision.get('top_label', 'unknown')}")
+        lines.append(f"Vision confidence:  {float(vision.get('confidence', 0.0)):.4f}")
+        lines.append(f"Incident detected:  {vision.get('incident_detected', False)}")
+        lines.append(f"Analysed at:        {vision.get('analysed_at', 'N/A')}")
+        top_scores = vision.get("scores", {})
+        if top_scores:
+            lines.append("Top ImageNet predictions:")
+            for lbl, sc in list(top_scores.items())[:5]:
+                lines.append(f"  {lbl}: {sc:.4f}")
+        lines.append(
+            "INSTRUCTION: Incorporate vision_confidence as an additional signal "
+            "when computing overall_confidence. Weight it at ~0.25 alongside "
+            "sensor (0.30), radio (0.25), and detection_confidence (0.20). "
+            "If vision_confidence > 0.5, raise overall_confidence by at least 0.1."
+        )
         sections.append("\n".join(lines))
 
     # ---- Recent events -------------------------------------------------------

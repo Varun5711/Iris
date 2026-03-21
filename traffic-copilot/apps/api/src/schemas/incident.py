@@ -113,6 +113,28 @@ class SegmentOut(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class VisionAnalysisOut(BaseModel):
+    """
+    Result returned by POST /incidents/{incident_id}/vision.
+    """
+
+    incident_id: UUID = Field(..., description="Incident the image was analysed against")
+    incident_detected: bool = Field(
+        ..., description="True when the vision model flagged a likely incident in the image"
+    )
+    confidence: float = Field(..., ge=0.0, le=1.0, description="Score of the top classification label")
+    top_label: str = Field(..., description="Highest-scoring candidate label")
+    scores: dict = Field(default_factory=dict, description="Full label→score mapping from the model")
+    model: str = Field(..., description="HF model used for classification")
+    source: str = Field(..., description="'huggingface' or 'mock'")
+    kafka_published: bool = Field(
+        default=False,
+        description="True when a CameraMetaEvent was published to Kafka for downstream processing",
+    )
+
+    model_config = {"populate_by_name": True}
+
+
 class IncidentSnapshot(BaseModel):
     """
     Enriched read-model combining an incident with its affected road segments

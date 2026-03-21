@@ -14,14 +14,15 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Form, HTTPException, Query, UploadFile, status
+from fastapi.responses import JSONResponse
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.core.logging import get_logger
 from src.db.session import get_db
 from src.schemas.event import ManualIncidentEvent
-from src.schemas.incident import IncidentCreate, IncidentOut, IncidentSnapshot, SegmentOut
+from src.schemas.incident import IncidentCreate, IncidentOut, IncidentSnapshot, SegmentOut, VisionAnalysisOut
 
 logger = get_logger(__name__)
 
@@ -305,6 +306,405 @@ async def add_event(
 
     logger.info("incidents: event appended", incident_id=iid, source=source)
     return {"status": "accepted", "incident_id": iid, "event_id": str(event.event_id)}
+
+
+# ---------------------------------------------------------------------------
+# POST /incidents/{incident_id}/vision
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{incident_id}/vision", response_model=VisionAnalysisOut, status_code=status.HTTP_200_OK)
+async def analyse_incident_image(
+    incident_id: UUID,
+    image: UploadFile,
+    officer_id: str = Form(..., description="Badge number or user ID of the uploading officer"),
+    db: AsyncSession = Depends(get_db),
+) -> VisionAnalysisOut:
+    """
+    Accept a JPEG/PNG image upload and classify it via the HuggingFace CLIP model.
+
+    If the model detects an incident (confidence >= threshold), a CameraMetaEvent
+    is published to Kafka for downstream incident processing.
+    """
+    from src.integrations.huggingface.vision import analyze_image
+    from src.integrations.kafka.producer import publish
+    from src.integrations.kafka.topics import TRAFFIC_EVENTS_RAW
+    from src.schemas.event import CameraMetaEvent
+    from src.integrations.redis.client import cache_set, vision_analysis_key
+    from datetime import datetime, timezone
+    from uuid import uuid4
+
+    iid = str(incident_id)
+
+    # Verify incident exists.
+    chk = await db.execute(text("SELECT id FROM incidents WHERE id = :id"), {"id": iid})
+    if chk.fetchone() is None:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+
+    image_bytes = await image.read()
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Uploaded image is empty")
+
+    result = await analyze_image(image_bytes, filename=image.filename or "upload")
+
+    # ------------------------------------------------------------------ #
+    # Always cache vision result in Redis so the context builder and LLM  #
+    # can incorporate the vision confidence into overall_confidence,       #
+    # regardless of whether the detection threshold was crossed.           #
+    # ------------------------------------------------------------------ #
+    try:
+        from datetime import datetime, timezone as tz
+        await cache_set(
+            vision_analysis_key(iid),
+            {
+                "incident_id": iid,
+                "confidence": result["confidence"],
+                "incident_detected": result["incident_detected"],
+                "top_label": result["top_label"],
+                "scores": result["scores"],
+                "model": result.get("model", ""),
+                "source": result.get("source", ""),
+                "officer_id": officer_id,
+                "analysed_at": datetime.now(tz=timezone.utc).isoformat(),
+            },
+            ttl_seconds=86400,  # 24 h
+        )
+        logger.info("incidents: vision result cached in Redis", incident_id=iid, confidence=result["confidence"])
+    except Exception as exc:
+        logger.warning("incidents: vision Redis cache failed (non-fatal)", error=str(exc))
+
+    kafka_published = False
+    if result["incident_detected"]:
+        try:
+            camera_event = CameraMetaEvent(
+                event_id=uuid4(),
+                source="camera",
+                event_time=datetime.now(tz=timezone.utc),
+                camera_id=f"vision_upload_{officer_id}",
+                lane_blocked=True,
+                vehicle_count=0,
+                incident_detected=True,
+                confidence=result["confidence"],
+                payload={
+                    "incident_id": iid,
+                    "top_label": result["top_label"],
+                    "scores": result["scores"],
+                    "officer_id": officer_id,
+                    "filename": image.filename,
+                },
+            )
+            await publish(TRAFFIC_EVENTS_RAW, camera_event.model_dump(mode="json"), key=iid)
+            kafka_published = True
+            logger.info(
+                "incidents: vision CameraMetaEvent published",
+                incident_id=iid,
+                top_label=result["top_label"],
+                confidence=result["confidence"],
+            )
+        except Exception as exc:
+            logger.warning("incidents: vision Kafka publish failed (non-fatal)", error=str(exc))
+
+    await _audit(db, iid, "VISION_ANALYSIS", officer_id, {
+        "top_label": result["top_label"],
+        "confidence": result["confidence"],
+        "incident_detected": result["incident_detected"],
+    })
+    await db.commit()
+
+    return VisionAnalysisOut(
+        incident_id=incident_id,
+        incident_detected=result["incident_detected"],
+        confidence=result["confidence"],
+        top_label=result["top_label"],
+        scores=result["scores"],
+        model=result["model"],
+        source=result["source"],
+        kafka_published=kafka_published,
+    )
+
+
+# ---------------------------------------------------------------------------
+# GET /incidents/{incident_id}/map-data
+# ---------------------------------------------------------------------------
+
+
+@router.get("/{incident_id}/map-data", status_code=status.HTTP_200_OK)
+async def get_map_data(
+    incident_id: UUID,
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """
+    Return a GeoJSON FeatureCollection for frontend map rendering.
+
+    Features returned:
+      - incident_point     : Point marker at the incident location
+      - affected_route     : LineString of blocked road segments (from OSM graph)
+      - diversion_route    : LineString of the recommended diversion (OSM graph or LLM waypoints)
+      - signal_actions     : Point features for each suggested signal intersection
+      - nearby_intersections: Point features for intersections near the incident
+
+    The frontend can directly pass this to Leaflet / Mapbox as a GeoJSON layer.
+    """
+    iid = str(incident_id)
+
+    # ---- Verify incident exists and fetch core data -------------------------
+    row = await db.execute(
+        text(
+            """
+            SELECT id::text, status, severity, corridor_id, description,
+                   ST_Y(location) AS location_lat,
+                   ST_X(location) AS location_lon,
+                   detection_confidence
+            FROM incidents WHERE id = CAST(:iid AS uuid)
+            """
+        ),
+        {"iid": iid},
+    )
+    inc = row.mappings().first()
+    if inc is None:
+        raise HTTPException(status_code=404, detail=f"Incident {incident_id} not found")
+    inc = dict(inc)
+
+    # ---- Fetch affected segments (have osm_node_u/v) ------------------------
+    seg_rows = await db.execute(
+        text(
+            """
+            SELECT osm_way_id, osm_node_u, osm_node_v, road_name,
+                   delay_seconds, congestion_pct
+            FROM affected_segments
+            WHERE incident_id = CAST(:iid AS uuid)
+            ORDER BY congestion_pct DESC
+            """
+        ),
+        {"iid": iid},
+    )
+    segments = [dict(r) for r in seg_rows.mappings().all()]
+
+    # ---- Fetch latest composite recommendation for diversion plan -----------
+    rec_row = await db.execute(
+        text(
+            """
+            SELECT copilot_response
+            FROM recommendations
+            WHERE incident_id = CAST(:iid AS uuid)
+              AND rec_type = 'composite'
+              AND copilot_response IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1
+            """
+        ),
+        {"iid": iid},
+    )
+    rec = rec_row.mappings().first()
+    diversion_plan = None
+    signal_actions: list[dict] = []
+    if rec:
+        try:
+            cr = rec["copilot_response"]
+            if isinstance(cr, str):
+                import json as _json
+                cr = _json.loads(cr)
+            diversion_plan = cr.get("diversion_plan")
+            signal_actions = cr.get("signal_actions") or []
+        except Exception:
+            pass
+
+    # ---- Load OSM graph (may be None in dev) --------------------------------
+    try:
+        from src.modules.routing.graph import get_graph, get_node_nearest
+        graph = get_graph()
+    except Exception:
+        graph = None
+
+    features: list[dict] = []
+
+    # ---- 1. Incident point --------------------------------------------------
+    inc_lat = inc.get("location_lat")
+    inc_lon = inc.get("location_lon")
+    if inc_lat and inc_lon:
+        features.append({
+            "type": "Feature",
+            "geometry": {"type": "Point", "coordinates": [inc_lon, inc_lat]},
+            "properties": {
+                "feature_type": "incident_point",
+                "incident_id": iid,
+                "severity": inc.get("severity"),
+                "status": inc.get("status"),
+                "corridor_id": inc.get("corridor_id"),
+                "description": inc.get("description"),
+                "detection_confidence": inc.get("detection_confidence"),
+                "marker_color": "#ff3333",
+                "marker_icon": "warning",
+            },
+        })
+
+    # ---- 2. Affected route (blocked segments as LineStrings) ----------------
+    if segments and graph is not None:
+        for seg in segments:
+            u_id = seg.get("osm_node_u")
+            v_id = seg.get("osm_node_v")
+            if not u_id or not v_id:
+                continue
+            try:
+                u_data = graph.nodes.get(int(u_id), {})
+                v_data = graph.nodes.get(int(v_id), {})
+                if u_data and v_data:
+                    features.append({
+                        "type": "Feature",
+                        "geometry": {
+                            "type": "LineString",
+                            "coordinates": [
+                                [float(u_data.get("x", 0)), float(u_data.get("y", 0))],
+                                [float(v_data.get("x", 0)), float(v_data.get("y", 0))],
+                            ],
+                        },
+                        "properties": {
+                            "feature_type": "affected_segment",
+                            "osm_way_id": seg.get("osm_way_id"),
+                            "road_name": seg.get("road_name"),
+                            "delay_seconds": seg.get("delay_seconds"),
+                            "congestion_pct": seg.get("congestion_pct"),
+                            "stroke_color": "#ff6600",
+                            "stroke_width": 5,
+                        },
+                    })
+            except Exception:
+                pass
+    elif segments:
+        # Graph unavailable — emit placeholder feature with segment metadata only
+        for seg in segments:
+            features.append({
+                "type": "Feature",
+                "geometry": None,
+                "properties": {
+                    "feature_type": "affected_segment",
+                    "osm_way_id": seg.get("osm_way_id"),
+                    "road_name": seg.get("road_name"),
+                    "note": "geometry unavailable (graph not loaded)",
+                },
+            })
+
+    # ---- 3. Diversion route -------------------------------------------------
+    diversion_added = False
+
+    # 3a. Try to compute real route via OSM graph (blocked edges = affected segs)
+    if graph is not None and segments and inc_lat and inc_lon:
+        try:
+            from src.modules.routing.diversion import compute_diversion_routes
+
+            blocked_edges = [
+                (int(s["osm_node_u"]), int(s["osm_node_v"]))
+                for s in segments
+                if s.get("osm_node_u") and s.get("osm_node_v")
+            ]
+            origin_node = await get_node_nearest(inc_lat, inc_lon, graph)
+            # Use the last affected segment's v-node as destination
+            dest_node = int(segments[-1]["osm_node_v"]) if segments else 0
+
+            if origin_node and dest_node and origin_node != dest_node:
+                routes = await compute_diversion_routes(
+                    origin_node=origin_node,
+                    destination_node=dest_node,
+                    graph=graph,
+                    blocked_edges=blocked_edges,
+                    k=1,
+                )
+                if routes:
+                    r = routes[0]
+                    features.append({
+                        "type": "Feature",
+                        "geometry": r["route_geojson"],
+                        "properties": {
+                            "feature_type": "diversion_route",
+                            "source": "osm_graph",
+                            "road_names": r["road_names"],
+                            "distance_m": r["distance_m"],
+                            "estimated_minutes": r["estimated_minutes"],
+                            "description": diversion_plan.get("route_description", "") if diversion_plan else "",
+                            "stroke_color": "#3399ff",
+                            "stroke_width": 4,
+                            "stroke_dash": "8,4",
+                        },
+                    })
+                    diversion_added = True
+        except Exception as exc:
+            logger.warning("map-data: diversion route compute failed (non-fatal)", error=str(exc))
+
+    # 3b. Fall back to LLM waypoints if OSM routing failed/unavailable
+    if not diversion_added and diversion_plan:
+        waypoints = diversion_plan.get("waypoints") or []
+        if len(waypoints) >= 2:
+            coords = [[wp["lng"], wp["lat"]] for wp in waypoints if wp.get("lat") and wp.get("lng")]
+            if len(coords) >= 2:
+                features.append({
+                    "type": "Feature",
+                    "geometry": {"type": "LineString", "coordinates": coords},
+                    "properties": {
+                        "feature_type": "diversion_route",
+                        "source": "llm_waypoints",
+                        "description": diversion_plan.get("route_description", ""),
+                        "estimated_extra_minutes": diversion_plan.get("estimated_extra_minutes"),
+                        "traffic_redistribution_pct": diversion_plan.get("traffic_redistribution_pct"),
+                        "confidence": diversion_plan.get("confidence"),
+                        "waypoint_names": [wp.get("name") for wp in waypoints],
+                        "stroke_color": "#3399ff",
+                        "stroke_width": 4,
+                        "stroke_dash": "8,4",
+                    },
+                })
+
+    # ---- 4. Signal action points -------------------------------------------
+    if graph is not None and signal_actions and inc_lat and inc_lon:
+        try:
+            from src.modules.state_engine.corridor import get_nearby_intersections
+            origin_node_for_ix = await get_node_nearest(inc_lat, inc_lon, graph)
+            if origin_node_for_ix:
+                intersections = await get_nearby_intersections(
+                    origin_node_for_ix, graph, count=max(len(signal_actions), 3)
+                )
+                for i, sa in enumerate(signal_actions):
+                    if i < len(intersections):
+                        ix = intersections[i]
+                        features.append({
+                            "type": "Feature",
+                            "geometry": {"type": "Point", "coordinates": [ix["lon"], ix["lat"]]},
+                            "properties": {
+                                "feature_type": "signal_action",
+                                "intersection_id": sa.get("intersection_id"),
+                                "action": sa.get("action"),
+                                "expected_impact": sa.get("expected_impact"),
+                                "confidence": sa.get("confidence"),
+                                "road_names": ix.get("road_names", []),
+                                "osm_node_id": ix.get("node_id"),
+                                "marker_color": "#ffdd00",
+                                "marker_icon": "traffic-light",
+                            },
+                        })
+        except Exception as exc:
+            logger.warning("map-data: signal action points failed (non-fatal)", error=str(exc))
+
+    # ---- Assemble FeatureCollection ----------------------------------------
+    payload = {
+        "type": "FeatureCollection",
+        "incident_id": iid,
+        "corridor_id": inc.get("corridor_id"),
+        "severity": inc.get("severity"),
+        "status": inc.get("status"),
+        "graph_loaded": graph is not None,
+        "features": features,
+        "meta": {
+            "incident_point": inc_lat is not None and inc_lon is not None,
+            "affected_segments_count": len(segments),
+            "diversion_source": (
+                "osm_graph" if diversion_added
+                else ("llm_waypoints" if (diversion_plan and diversion_plan.get("waypoints")) else "none")
+            ),
+            "signal_actions_count": len(signal_actions),
+        },
+    }
+    # Use custom serializer to handle numpy int64 / other non-JSON-native types
+    import json as _json
+    return JSONResponse(content=_json.loads(_json.dumps(payload, default=str)))
 
 
 # ---------------------------------------------------------------------------
