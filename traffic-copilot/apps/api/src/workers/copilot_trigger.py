@@ -107,16 +107,15 @@ async def _audit_log(session, incident_id: str, action: str, officer_id: str, de
             await session.execute(
                 text(
                     """
-                    INSERT INTO audit_log (id, incident_id, action, officer_id, details, created_at)
-                    VALUES (:id, :incident_id, :action, :officer_id, :details::jsonb, :now)
+                    INSERT INTO audit_log (id, event_type, actor, payload, created_at)
+                    VALUES (:id, :event_type, :actor, :payload::jsonb, :now)
                     """
                 ),
                 {
                     "id": str(uuid4()),
-                    "incident_id": incident_id,
-                    "action": action,
-                    "officer_id": officer_id,
-                    "details": json.dumps(details, default=str),
+                    "event_type": action,
+                    "actor": officer_id,
+                    "payload": json.dumps({"incident_id": incident_id, **details}, default=str),
                     "now": datetime.now(tz=timezone.utc),
                 },
             )
@@ -224,11 +223,12 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     INSERT INTO recommendations
                         (id, incident_id, rec_type, action, expected_impact,
                          evidence_refs, confidence, blocked_reason, review_required,
-                         status, created_at, copilot_response)
+                         status, prompt_snapshot, llm_response, created_at)
                     VALUES
                         (:id, :incident_id, 'composite', :action, :expected_impact,
                          :evidence_refs::jsonb, :confidence, :blocked_reason,
-                         :review_required, 'pending', :now, :copilot_response::jsonb)
+                         :review_required, 'pending', :prompt_snapshot::jsonb,
+                         :llm_response::jsonb, :now)
                     """
                 ),
                 {
@@ -241,7 +241,8 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     "blocked_reason": validated.get("blocked_reason"),
                     "review_required": validated.get("review_required", True),
                     "now": now,
-                    "copilot_response": json.dumps(validated, default=str),
+                    "prompt_snapshot": json.dumps({"context_keys": list(context.keys())}, default=str),
+                    "llm_response": json.dumps(validated, default=str),
                 },
             )
         except Exception as exc:
@@ -266,17 +267,16 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
                     text(
                         """
                         INSERT INTO alerts
-                            (id, recommendation_id, incident_id, channel, draft_text,
+                            (id, recommendation_id, channel, draft_text,
                              status, created_at)
                         VALUES
-                            (:id, :recommendation_id, :incident_id, :channel,
+                            (:id, :recommendation_id, :channel,
                              :draft_text, 'draft', :now)
                         """
                     ),
                     {
                         "id": alert_id,
                         "recommendation_id": recommendation_id,
-                        "incident_id": incident_id,
                         "channel": channel,
                         "draft_text": message,
                         "now": now,

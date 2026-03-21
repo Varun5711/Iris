@@ -73,6 +73,10 @@ CREATE TABLE IF NOT EXISTS affected_segments (
     id              UUID    PRIMARY KEY DEFAULT gen_random_uuid(),
     incident_id     UUID    NOT NULL REFERENCES incidents (id) ON DELETE CASCADE,
     osm_way_id      BIGINT  NOT NULL,
+    osm_node_u      BIGINT,
+    osm_node_v      BIGINT,
+    road_name       TEXT,
+    hop_distance    INT     NOT NULL DEFAULT 0,
     geom            GEOMETRY(LineString, 4326),
     delay_seconds   INT     NOT NULL DEFAULT 0 CHECK (delay_seconds >= 0),
     congestion_pct  FLOAT   NOT NULL DEFAULT 0.0

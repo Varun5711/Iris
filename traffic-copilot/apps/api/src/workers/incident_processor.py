@@ -252,17 +252,16 @@ async def _handle_detection(
     await session.execute(
         text(
             """
-            INSERT INTO incident_events (incident_id, event_id, source, event_time, payload)
-            VALUES (:incident_id, :event_id, :source, :event_time, :payload::jsonb)
-            ON CONFLICT DO NOTHING
+            INSERT INTO incident_events (id, incident_id, source, event_time, raw_payload)
+            VALUES (:id, :incident_id, :source, :event_time, :raw_payload::jsonb)
             """
         ),
         {
+            "id": str(uuid4()),
             "incident_id": incident_id,
-            "event_id": str(event.event_id),
             "source": event.source,
             "event_time": event.event_time,
-            "payload": json.dumps(event.payload, default=str),
+            "raw_payload": json.dumps(event.payload, default=str),
         },
     )
     await session.commit()

@@ -1,3 +1,11 @@
+# =============================================================================
+# TrafficCopilot — Docker Compose (Dev)
+#
+# Runs: postgres, redis, kafka, api (hot-reload)
+# Prometheus + Grafana are intentionally excluded for dev speed.
+# To add them back: docker compose --profile observability up
+# =============================================================================
+
 services:
   postgres:
     image: postgis/postgis:16-3.4
@@ -7,6 +15,9 @@ services:
       POSTGRES_DB: trafficcopilot
     volumes:
       - pg_data:/var/lib/postgresql/data
+      # Auto-runs on first start (when pg_data volume is empty)
+      - ./apps/api/src/db/migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+      - ./apps/api/src/db/migrations/002_pgvector_extended.sql:/docker-entrypoint-initdb.d/002_pgvector_extended.sql:ro
     ports:
       - "5432:5432"
     healthcheck:
@@ -62,10 +73,18 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Override service hostnames for Docker internal network
+      DATABASE_URL: postgresql+asyncpg://tc:tc_secret@postgres:5432/trafficcopilot
+      REDIS_URL: redis://redis:6379/0
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      ENVIRONMENT: development
     volumes:
-      - ./apps/api:/app
+      # Hot-reload: mount source so changes reflect without rebuild
+      - ./apps/api/src:/app/src
       - ./data:/app/data
       - ./prompts:/app/prompts
+      - ./scripts:/app/scripts
     depends_on:
       postgres:
         condition: service_healthy
@@ -78,11 +97,13 @@ services:
       interval: 15s
       timeout: 10s
       retries: 5
-      start_period: 30s
+      start_period: 40s
     restart: unless-stopped
 
+  # ── Observability (opt-in via --profile observability) ─────────────────────
   prometheus:
     image: prom/prometheus:latest
+    profiles: [observability]
     ports:
       - "9090:9090"
     volumes:
@@ -90,21 +111,14 @@ services:
     command:
       - "--config.file=/etc/prometheus/prometheus.yml"
       - "--storage.tsdb.path=/prometheus"
-      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
-      - "--web.console.templates=/usr/share/prometheus/consoles"
       - "--web.enable-lifecycle"
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:9090/-/healthy || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
     restart: unless-stopped
 
   grafana:
     image: grafana/grafana:latest
+    profiles: [observability]
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: admin
@@ -112,14 +126,7 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
     depends_on:
-      prometheus:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000/api/health || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 20s
+      - prometheus
     restart: unless-stopped
 
 volumes:
