@@ -10,6 +10,7 @@ All calculations use the simple Bureau of Public Roads (BPR) / ratio model:
 from __future__ import annotations
 
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +117,3 @@ def estimate_clearance_time(
     if incident_clearance_rate_m_per_min <= 0:
         incident_clearance_rate_m_per_min = 50.0
     return max(1, int(math.ceil(queue_length_m / incident_clearance_rate_m_per_min)))
-
-
-# ---------------------------------------------------------------------------
-# We import math here so the module is self-contained (used in estimate_clearance_time).
-# ---------------------------------------------------------------------------
-import math  # noqa: E402 — intentional late import to keep module-level code clean

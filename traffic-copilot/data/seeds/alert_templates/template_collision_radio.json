@@ -1,0 +1,6 @@
+{
+  "channel": "radio",
+  "incident_type": "collision",
+  "template_text": "Attention drivers: a [severity] accident on [road] [direction] at [location] is causing significant delays. Use [alternate] as an alternate route. Emergency services are on scene.",
+  "description": "Radio broadcast template for collision incidents"
+}
