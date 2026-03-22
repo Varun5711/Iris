@@ -118,62 +118,29 @@ export default function AssistantPage() {
     const assistantId = (Date.now() + 1).toString();
     setMessages((p) => [...p, { id: assistantId, role: "assistant", content: "", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
 
-    // Only use backend incident context when the active session is pinned to a specific incident.
-    // For general sessions, always use Groq with full conversation history so context is preserved.
+    // Route through backend — it handles Groq API key, incident context, and conversation history.
     const activeSession = sessions.find((s) => s.id === activeSessionId);
     const sessionIncidentId = activeSession?.incidentId;
 
     try {
-      if (sessionIncidentId) {
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ incidentId: sessionIncidentId, question: q, officerId: "officer-web" }),
-        });
-        const ct = res.headers.get("content-type") ?? "";
-        if (ct.includes("application/json")) {
-          const d = await res.json();
-          const answer = d.answer ?? d.copilot_response?.conversational_answer ?? "Processed.";
-          setMessages((p) => p.map((m) => m.id === assistantId ? { ...m, content: answer } : m));
-          setLoading(false);
-          return;
-        }
-      }
+      const body = sessionIncidentId
+        ? { incidentId: sessionIncidentId, question: q, officerId: "officer-web" }
+        : {
+            messages: [
+              ...messages.map((m) => ({ role: m.role, content: m.content })),
+              { role: "user", content: q },
+            ],
+            officerId: "officer-web",
+          };
 
-      // General sessions: send full conversation history to Groq so prior context is preserved.
-      // Include a snapshot of live incidents so IRIS can reference real data.
-      const incidentContext = incidents.slice(0, 5).map((i) =>
-        `${i.corridor_id} (${i.severity}): ${i.description?.slice(0, 80)}`
-      ).join("\n");
-      const apiMessages = [
-        ...(incidentContext ? [{ role: "system" as const, content: `Live incidents:\n${incidentContext}` }] : []),
-        ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-        { role: "user" as const, content: q },
-      ];
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: apiMessages }),
+        body: JSON.stringify(body),
       });
-
-      const reader = res.body?.getReader();
-      const decoder = new TextDecoder();
-      let full = "";
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const lines = decoder.decode(value).split("\n").filter((l) => l.startsWith("data: "));
-          for (const line of lines) {
-            const data = line.slice(6);
-            if (data === "[DONE]") continue;
-            try {
-              full += JSON.parse(data).choices?.[0]?.delta?.content ?? "";
-              setMessages((p) => p.map((m) => m.id === assistantId ? { ...m, content: full } : m));
-            } catch {}
-          }
-        }
-      }
+      const d = await res.json();
+      const answer = d.answer ?? d.copilot_response?.conversational_answer ?? "I was unable to process your request.";
+      setMessages((p) => p.map((m) => m.id === assistantId ? { ...m, content: answer } : m));
     } catch {
       setMessages((p) => p.map((m) => m.id === assistantId ? { ...m, content: "Connection error. Please try again." } : m));
     } finally {

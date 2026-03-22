@@ -1,19 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
-const GROQ_API_KEY = process.env.GROQ_API_KEY!;
-const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
-
-const SYSTEM_PROMPT = `You are TrafficCopilot, an AI-powered incident management co-pilot for Ahmedabad, India.
-You assist traffic control officers during live incidents with signal re-timing suggestions, diversion route recommendations, and public alert drafts.
-Current city: Ahmedabad, Gujarat, India.
-Key corridors: CG Road (AMD-CGR-01), SG Highway (AMD-SGH-01), Ashram Road (AMD-ASH-01), SP Ring Road (AMD-SPRR-01), Drive-In Road (AMD-DIN-01), NH-48/Narol (AMD-NHW-08).
-Speak concisely and professionally. Keep responses under 200 words unless detail is requested.`;
 
 export async function POST(req: NextRequest) {
   const { messages, incidentId, question, officerId = "officer-web" } = await req.json();
 
-  // Try backend first (has full incident context, OSM graph data, etc)
+  // Incident-specific query — use backend /chat/ with full incident context
   if (incidentId && question) {
     try {
       const res = await fetch(`${BACKEND}/chat/`, {
@@ -32,35 +24,24 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ answer, recommendation: rec });
       }
     } catch {
-      // fall through to Groq
+      // fall through to general
     }
   }
 
-  // Fallback: direct Groq streaming
-  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${GROQ_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, ...(messages ?? [])],
-      stream: true,
-      temperature: 0.3,
-      max_tokens: 512,
-    }),
-  });
+  // General conversation — proxy full message history to backend /chat/general
+  // Backend adds live incident context and calls Groq server-side
+  try {
+    const res = await fetch(`${BACKEND}/chat/general`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages: messages ?? [], officer_id: officerId }),
+      signal: AbortSignal.timeout(15000),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json({ answer: data.answer });
+    }
+  } catch {}
 
-  if (!response.ok) {
-    return NextResponse.json({ error: "LLM unavailable" }, { status: 500 });
-  }
-
-  return new Response(response.body, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+  return NextResponse.json({ error: "LLM unavailable" }, { status: 500 });
 }

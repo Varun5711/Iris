@@ -365,3 +365,76 @@ async def ask_question(
         created_at=now,
         copilot_response=copilot_response_obj,
     )
+
+
+# ---------------------------------------------------------------------------
+# POST /chat/general — no incident_id required, accepts full conversation history
+# ---------------------------------------------------------------------------
+
+
+class GeneralChatMessage(BaseModel):
+    role: str  # "user" | "assistant" | "system"
+    content: str
+
+
+class GeneralChatRequest(BaseModel):
+    messages: list[GeneralChatMessage]
+    officer_id: str = "anonymous"
+
+
+class GeneralChatResponse(BaseModel):
+    answer: str
+
+
+@router.post("/general", response_model=GeneralChatResponse)
+async def general_chat(body: GeneralChatRequest, db: AsyncSession = Depends(get_db)) -> GeneralChatResponse:
+    """
+    General Q&A without a specific incident. Accepts full conversation history
+    and includes a live snapshot of active incidents for context.
+    Calls Groq via the backend — no API key needed on the frontend.
+    """
+    from src.integrations.groq.client import get_groq_client
+
+    # Fetch live incidents for context
+    incident_rows = await db.execute(
+        text("""
+            SELECT corridor_id, severity, description
+            FROM incidents
+            WHERE status IN ('active', 'monitoring')
+            ORDER BY
+                CASE severity WHEN 'critical' THEN 0 WHEN 'high' THEN 1 ELSE 2 END
+            LIMIT 8
+        """)
+    )
+    incidents = incident_rows.mappings().all()
+    incident_ctx = "\n".join(
+        f"- {r['corridor_id']} ({r['severity']}): {(r['description'] or '')[:100]}"
+        for r in incidents
+    )
+
+    system_prompt = (
+        "You are IRIS TrafficCopilot, an AI-powered incident management co-pilot for Ahmedabad, India. "
+        "You assist traffic control officers with signal re-timing, diversion routes, and public alerts. "
+        "Be concise and professional. Keep responses under 200 words unless more detail is requested.\n\n"
+        f"Current live incidents in Ahmedabad:\n{incident_ctx or 'No active incidents.'}"
+    )
+
+    groq_messages = [{"role": "system", "content": system_prompt}]
+    for m in body.messages:
+        if m.role in ("user", "assistant"):
+            groq_messages.append({"role": m.role, "content": m.content})
+
+    try:
+        groq_client = get_groq_client()
+        response = await groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            temperature=0.3,
+            max_tokens=512,
+            messages=groq_messages,
+        )
+        answer = response.choices[0].message.content or "No response."
+    except Exception as exc:
+        logger.warning("chat/general: Groq call failed", error=str(exc))
+        answer = "I'm unable to answer right now. Please try again shortly."
+
+    return GeneralChatResponse(answer=answer)
