@@ -110,14 +110,7 @@ export default function CameraFeedsPage() {
           <h2 className="text-3xl font-bold tracking-tight text-on-surface">Camera Feeds</h2>
           <p className="text-on-surface-variant mt-1">Real-time surveillance monitoring for Central District traffic flow.</p>
         </div>
-        <div className="flex gap-2">
-          <button className="px-4 py-2 text-sm font-semibold text-primary hover:bg-primary/5 rounded-full flex items-center gap-2 transition-colors">
-            <span className="material-symbols-outlined text-sm">download</span> Export
-          </button>
-          <button className="px-5 py-2 text-sm font-semibold text-white signature-gradient rounded-full shadow-md hover:brightness-110">
-            Add Camera
-          </button>
-        </div>
+
       </div>
 
       <div className="grid grid-cols-12 gap-6">
