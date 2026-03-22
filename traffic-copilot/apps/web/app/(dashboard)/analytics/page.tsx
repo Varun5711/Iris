@@ -156,10 +156,10 @@ export default function AnalyticsPage() {
           <p className="text-xs text-on-surface-variant mb-6">Kilometers per hour (km/h)</p>
           <div className="space-y-6">
             {(data?.districtSpeeds ?? [
-              { district: "Central Hub", speed: 34 },
-              { district: "Northern Gateway", speed: 52 },
-              { district: "West End Terminal", speed: 28 },
-              { district: "South Parkway", speed: 48 },
+              { district: "CG Road", speed: 34 },
+              { district: "SG Highway", speed: 52 },
+              { district: "Ashram Road", speed: 28 },
+              { district: "SP Ring Road", speed: 48 },
             ]).map(({ district, speed }) => (
               <div key={district} className="space-y-1">
                 <div className="flex justify-between text-[10px] font-bold">

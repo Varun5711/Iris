@@ -2,6 +2,7 @@
 Incident CRUD endpoints.
 
 POST   /incidents/                      Create a new incident manually
+POST   /incidents/voice-report          Transcribe audio via AssemblyAI, parse with Groq, create incident
 GET    /incidents/{incident_id}         Get a full IncidentSnapshot
 POST   /incidents/{incident_id}/events  Append a raw event to an existing incident
 GET    /incidents/                      List incidents filtered by status
@@ -185,6 +186,241 @@ async def create_incident(
 
     logger.info("incidents: created", incident_id=incident_id, severity=body.severity)
     return _row_to_incident_out(result)
+
+
+# ---------------------------------------------------------------------------
+# POST /incidents/voice-report
+# ---------------------------------------------------------------------------
+# Flow:
+#   1. Accept audio file upload OR public audio_url
+#   2. Upload to AssemblyAI and poll until transcript is ready
+#   3. Send transcript to Groq → extract severity, location, corridor_id, lat/lon
+#   4. Insert incident into DB + publish to Kafka (same as manual create)
+#   5. Return IncidentOut + transcript + parsed fields
+# ---------------------------------------------------------------------------
+
+_ASSEMBLYAI_BASE = "https://api.assemblyai.com"
+_ASSEMBLYAI_API_KEY = "16c351d64a87482c870b4f49068844d7"
+
+_GROQ_PARSE_SYSTEM = """You are a traffic incident parser.
+Given a radio/voice transcript from a traffic officer, extract incident details.
+Respond ONLY with a valid JSON object — no explanation, no markdown.
+Required fields:
+  severity: one of "low", "medium", "high", "critical"
+  description: concise incident description (max 200 chars)
+  corridor_id: best-guess corridor ID (e.g. AMD-CGR-01 for CG Road Ahmedabad, AMD-SGH-01 for SG Highway, AMD-ASH-01 for Ashram Road, AMD-NHW-08 for NH-48 Narol, AMD-DIN-01 for Drive-In Road, AMD-SPRR-01 for SP Ring Road, or UNKNOWN if unclear)
+  lat: decimal latitude (null if not mentioned)
+  lon: decimal longitude (null if not mentioned)
+  location_name: plain text location name extracted from transcript
+"""
+
+
+async def _assemblyai_transcribe(audio_bytes: bytes | None, audio_url: str | None) -> str:
+    """Upload audio to AssemblyAI (if bytes) or use URL directly, poll until done, return transcript text."""
+    import asyncio
+    import httpx
+
+    headers = {"authorization": _ASSEMBLYAI_API_KEY}
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        # Step 1: upload file if bytes provided
+        if audio_bytes is not None:
+            upload_resp = await client.post(
+                f"{_ASSEMBLYAI_BASE}/v2/upload",
+                headers=headers,
+                content=audio_bytes,
+            )
+            upload_resp.raise_for_status()
+            audio_url = upload_resp.json()["upload_url"]
+
+        if not audio_url:
+            raise ValueError("No audio source provided")
+
+        # Step 2: submit transcription job
+        submit_resp = await client.post(
+            f"{_ASSEMBLYAI_BASE}/v2/transcript",
+            headers=headers,
+            json={
+                "audio_url": audio_url,
+                "language_detection": True,
+                "speech_models": ["universal-3-pro", "universal-2"],
+            },
+        )
+        submit_resp.raise_for_status()
+        transcript_id = submit_resp.json()["id"]
+        polling_url = f"{_ASSEMBLYAI_BASE}/v2/transcript/{transcript_id}"
+
+        # Step 3: poll until completed (max 90s)
+        for _ in range(30):
+            await asyncio.sleep(3)
+            poll_resp = await client.get(polling_url, headers=headers)
+            poll_resp.raise_for_status()
+            result = poll_resp.json()
+            if result["status"] == "completed":
+                return result["text"] or ""
+            elif result["status"] == "error":
+                raise RuntimeError(f"AssemblyAI transcription failed: {result.get('error')}")
+
+    raise TimeoutError("AssemblyAI transcription timed out after 90s")
+
+
+async def _groq_parse_transcript(transcript: str) -> dict:
+    """Send transcript to Groq, return parsed incident fields."""
+    from src.integrations.groq.client import call_copilot_safe
+
+    result = await call_copilot_safe(
+        system_prompt=_GROQ_PARSE_SYSTEM,
+        user_prompt=f"Transcript: {transcript}",
+        timeout=15.0,
+    )
+    if result is None:
+        # Groq unavailable — return safe defaults
+        return {
+            "severity": "medium",
+            "description": transcript[:200],
+            "corridor_id": "UNKNOWN",
+            "lat": None,
+            "lon": None,
+            "location_name": "Unknown location",
+        }
+    return result
+
+
+@router.post("/voice-report", response_model=dict, status_code=status.HTTP_201_CREATED)
+async def voice_report(
+    db: AsyncSession = Depends(get_db),
+    audio: UploadFile | None = None,
+    audio_url: str | None = Form(default=None),
+    officer_id: str = Form(default="voice_officer"),
+) -> dict:
+    """
+    Accept a voice/audio report from an officer.
+
+    Supply either:
+    - `audio`     — upload an audio file (mp3, wav, m4a, ogg)
+    - `audio_url` — public URL to an audio file
+
+    Flow:
+    1. Transcribe via AssemblyAI
+    2. Parse transcript with Groq → extract severity, corridor, lat/lon
+    3. Create incident in DB (same pipeline as POST /incidents/)
+    4. Publish to Kafka traffic.events.raw
+    5. Return IncidentOut + transcript + parsed details
+    """
+    from src.integrations.kafka.producer import publish
+    from src.integrations.kafka.topics import TRAFFIC_EVENTS_RAW
+
+    if audio is None and not audio_url:
+        raise HTTPException(
+            status_code=400,
+            detail="Provide either 'audio' file upload or 'audio_url' form field",
+        )
+
+    # 1. Transcribe
+    try:
+        audio_bytes = await audio.read() if audio is not None else None
+        transcript = await _assemblyai_transcribe(audio_bytes, audio_url)
+    except Exception as exc:
+        logger.error("voice_report: transcription failed", error=str(exc))
+        raise HTTPException(status_code=502, detail=f"Transcription failed: {exc}") from exc
+
+    logger.info("voice_report: transcript ready", transcript=transcript[:120])
+
+    # 2. Parse with Groq
+    parsed = await _groq_parse_transcript(transcript)
+
+    severity = str(parsed.get("severity") or "medium").lower()
+    if severity not in ("low", "medium", "high", "critical"):
+        severity = "medium"
+    description = str(parsed.get("description") or transcript[:200])
+    corridor_id = str(parsed.get("corridor_id") or "UNKNOWN")
+    lat = parsed.get("lat")
+    lon = parsed.get("lon")
+    location_name = str(parsed.get("location_name") or "")
+
+    # 3. Insert incident
+    incident_id = str(uuid4())
+    now = datetime.now(tz=timezone.utc)
+
+    if lat is not None and lon is not None:
+        location_expr = "ST_SetSRID(ST_MakePoint(:lon, :lat), 4326)"
+        geo_params: dict[str, Any] = {"lat": float(lat), "lon": float(lon)}
+    else:
+        location_expr = "NULL"
+        geo_params = {}
+
+    try:
+        await db.execute(
+            text(
+                f"""
+                INSERT INTO incidents
+                    (id, status, severity, description, corridor_id, reporter_id,
+                     detection_confidence, location, created_at, updated_at)
+                VALUES
+                    (:id, 'active', :severity, :description, :corridor_id,
+                     :reporter_id, :confidence, {location_expr}, :now, :now)
+                """
+            ),
+            {
+                "id": incident_id,
+                "severity": severity,
+                "description": description,
+                "corridor_id": corridor_id if corridor_id != "UNKNOWN" else None,
+                "reporter_id": officer_id,
+                "confidence": 0.85,
+                "now": now,
+                **geo_params,
+            },
+        )
+    except Exception as exc:
+        await db.rollback()
+        logger.error("voice_report: DB insert failed", error=str(exc))
+        raise HTTPException(status_code=500, detail="Failed to create incident") from exc
+
+    await _audit(db, incident_id, "INCIDENT_CREATED", officer_id, {
+        "severity": severity,
+        "source": "voice_report",
+        "transcript_length": len(transcript),
+    })
+    await db.commit()
+
+    # 4. Publish to Kafka
+    event = ManualIncidentEvent(
+        event_id=uuid4(),
+        source="manual",
+        event_time=now,
+        corridor_id=corridor_id if corridor_id != "UNKNOWN" else None,
+        lat=float(lat) if lat is not None else None,
+        lon=float(lon) if lon is not None else None,
+        severity=severity,
+        description=description,
+        reporter_id=officer_id,
+        payload={
+            "incident_id": incident_id,
+            "transcript": transcript,
+            "location_name": location_name,
+        },
+    )
+    try:
+        await publish(TRAFFIC_EVENTS_RAW, event.model_dump(mode="json"), key=incident_id)
+    except Exception as exc:
+        logger.warning("voice_report: Kafka publish failed (non-fatal)", error=str(exc))
+
+    logger.info("voice_report: incident created", incident_id=incident_id, severity=severity, corridor_id=corridor_id)
+
+    return {
+        "incident_id": incident_id,
+        "status": "active",
+        "severity": severity,
+        "description": description,
+        "corridor_id": corridor_id,
+        "location_name": location_name,
+        "lat": float(lat) if lat is not None else None,
+        "lon": float(lon) if lon is not None else None,
+        "transcript": transcript,
+        "parsed_by": "groq",
+        "created_at": now.isoformat(),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -785,45 +1021,120 @@ async def get_map_data(
     diversion_added = False
 
     # 3a. Try to compute real route via OSM graph (blocked edges = affected segs)
-    if graph is not None and segments and inc_lat and inc_lon:
+    if graph is not None and (segments or (inc_lat and inc_lon)):
         try:
             from src.modules.routing.diversion import compute_diversion_routes
 
+            # Only block the top-N most congested segments (sorted DESC by congestion_pct).
+            # Blocking all segments can disconnect the graph entirely — capping at 15
+            # keeps the primary jam impassable while still allowing alternate paths.
             blocked_edges = [
                 (int(s["osm_node_u"]), int(s["osm_node_v"]))
-                for s in segments
+                for s in segments[:15]
                 if s.get("osm_node_u") and s.get("osm_node_v")
             ]
-            origin_node = await get_node_nearest(inc_lat, inc_lon, graph)
-            # Use the last affected segment's v-node as destination
-            dest_node = int(segments[-1]["osm_node_v"]) if segments else 0
 
-            if origin_node and dest_node and origin_node != dest_node:
-                routes = await compute_diversion_routes(
-                    origin_node=origin_node,
-                    destination_node=dest_node,
-                    graph=graph,
-                    blocked_edges=blocked_edges,
-                    k=1,
-                )
-                if routes:
-                    r = routes[0]
-                    features.append({
-                        "type": "Feature",
-                        "geometry": r["route_geojson"],
-                        "properties": {
-                            "feature_type": "diversion_route",
-                            "source": "osm_graph",
-                            "road_names": r["road_names"],
-                            "distance_m": r["distance_m"],
-                            "estimated_minutes": r["estimated_minutes"],
-                            "description": diversion_plan.get("route_description", "") if diversion_plan else "",
-                            "stroke_color": "#3399ff",
-                            "stroke_width": 4,
-                            "stroke_dash": "8,4",
-                        },
-                    })
-                    diversion_added = True
+            # Derive origin: prefer incident lat/lon; fall back to first valid segment's u-node.
+            if inc_lat and inc_lon:
+                origin_node = await get_node_nearest(inc_lat, inc_lon, graph)
+            else:
+                origin_node = 0
+                for seg in segments:
+                    u = int(seg.get("osm_node_u") or 0)
+                    if u and u in graph:
+                        origin_node = u
+                        # Also backfill inc_lat/inc_lon from this node so the
+                        # fallback dest offset below has a reference point.
+                        nd = graph.nodes.get(u, {})
+                        inc_lat = nd.get("y", 0.0)
+                        inc_lon = nd.get("x", 0.0)
+                        break
+
+            # Pick destination: farthest valid osm_node_v from origin across all segments.
+            # segments[-1]["osm_node_v"] is unreliable — that segment may have
+            # osm_node_v=0 (map-match failure) or a node not in the loaded graph.
+            dest_node = 0
+            if origin_node:
+                origin_x = graph.nodes.get(origin_node, {}).get("x", inc_lon)
+                origin_y = graph.nodes.get(origin_node, {}).get("y", inc_lat)
+                best_dist = -1.0
+                for seg in segments:
+                    v = int(seg.get("osm_node_v") or 0)
+                    if v and v in graph and v != origin_node:
+                        vd = graph.nodes.get(v, {})
+                        dx = float(vd.get("x", 0)) - origin_x
+                        dy = float(vd.get("y", 0)) - origin_y
+                        dist = (dx ** 2 + dy ** 2) ** 0.5
+                        if dist > best_dist:
+                            best_dist = dist
+                            dest_node = v
+
+            # Hard fallback: snap a point ~1.5 km north of the incident
+            if not dest_node and inc_lat and inc_lon:
+                dest_node = await get_node_nearest(inc_lat + 0.0135, inc_lon, graph)
+
+            # Build list of destination candidates to try (in priority order).
+            # Geographic offsets (~1.5 km) come FIRST so the blue diversion line
+            # is always a meaningful length. Segment-based node is a last resort.
+            dest_candidates: list[int] = []
+            if inc_lat and inc_lon:
+                for dlat, dlon in [(0.013, 0), (-0.013, 0), (0, 0.013), (0, -0.013), (0.009, 0.009), (-0.009, -0.009)]:
+                    cand = await get_node_nearest(inc_lat + dlat, inc_lon + dlon, graph)
+                    if cand and cand != origin_node and cand not in dest_candidates:
+                        dest_candidates.append(cand)
+            if dest_node and dest_node not in dest_candidates:
+                dest_candidates.append(dest_node)
+
+            routes = []
+            if origin_node:
+                for d_cand in dest_candidates:
+                    if not d_cand or d_cand == origin_node:
+                        continue
+                    routes = await compute_diversion_routes(
+                        origin_node=origin_node,
+                        destination_node=d_cand,
+                        graph=graph,
+                        blocked_edges=blocked_edges,
+                        k=1,
+                    )
+                    if routes:
+                        break
+
+            # If origin is isolated with blocked edges, retry without any blocking.
+            # The origin node may only be reachable via the blocked edges themselves;
+            # removing the constraint lets A* find the nearest detour path.
+            if not routes and origin_node and dest_candidates:
+                for d_cand in dest_candidates[:4]:
+                    if not d_cand or d_cand == origin_node:
+                        continue
+                    routes = await compute_diversion_routes(
+                        origin_node=origin_node,
+                        destination_node=d_cand,
+                        graph=graph,
+                        blocked_edges=[],   # no edge blocking — show road path regardless
+                        k=1,
+                    )
+                    if routes:
+                        break
+
+            if routes:
+                r = routes[0]
+                features.append({
+                    "type": "Feature",
+                    "geometry": r["route_geojson"],
+                    "properties": {
+                        "feature_type": "diversion_route",
+                        "source": "osm_graph",
+                        "road_names": r["road_names"],
+                        "distance_m": r["distance_m"],
+                        "estimated_minutes": r["estimated_minutes"],
+                        "description": diversion_plan.get("route_description", "") if diversion_plan else "",
+                        "stroke_color": "#3399ff",
+                        "stroke_width": 4,
+                        "stroke_dash": "8,4",
+                    },
+                })
+                diversion_added = True
         except Exception as exc:
             logger.warning("map-data: diversion route compute failed (non-fatal)", error=str(exc))
 
@@ -832,7 +1143,16 @@ async def get_map_data(
     waypoint_osm_routed = False  # tracks actual outcome for meta
     if not diversion_added and diversion_plan:
         waypoints = diversion_plan.get("waypoints") or []
-        valid_wps = [wp for wp in waypoints if wp.get("lat") and wp.get("lng")]
+        # Reject hallucinated LLM coordinates — Ahmedabad graph covers roughly
+        # lat 22.7–23.4, lng 72.3–73.1. Coords outside this are fake.
+        _AHM_LAT = (22.7, 23.4)
+        _AHM_LNG = (72.3, 73.1)
+        valid_wps = [
+            wp for wp in waypoints
+            if wp.get("lat") and wp.get("lng")
+            and _AHM_LAT[0] <= float(wp["lat"]) <= _AHM_LAT[1]
+            and _AHM_LNG[0] <= float(wp["lng"]) <= _AHM_LNG[1]
+        ]
         if len(valid_wps) >= 2:
             all_coords: list[list[float]] = []
             road_names_collected: list[str] = []
@@ -972,7 +1292,10 @@ async def get_map_data(
             "diversion_source": (
                 "osm_graph" if diversion_added
                 else "osm_waypoint_routing" if waypoint_osm_routed
-                else "llm_waypoints" if (diversion_plan and diversion_plan.get("waypoints"))
+                else "llm_waypoints" if any(
+                    f.get("properties", {}).get("source") == "llm_waypoints"
+                    for f in features
+                )
                 else "none"
             ),
             "signal_actions_count": len(signal_actions),

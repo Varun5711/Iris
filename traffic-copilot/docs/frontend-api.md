@@ -15,13 +15,14 @@
 4. [Alerts](#4-alerts)
 5. [Chat (AI Copilot)](#5-chat-ai-copilot)
 6. [Vision / Image Upload](#6-vision--image-upload)
-7. [Map Data (GeoJSON)](#7-map-data-geojson)
-8. [WebSocket — Live Updates](#8-websocket--live-updates)
-9. [Complete Flow: Incident → SMS](#9-complete-flow-incident--sms)
-10. [Map Rendering Guide (Leaflet / Mapbox)](#10-map-rendering-guide-leaflet--mapbox)
-11. [WebSocket Integration Guide](#11-websocket-integration-guide)
-12. [Severity & Status Reference](#12-severity--status-reference)
-13. [Error Handling](#13-error-handling)
+7. [Voice Report (Speech-to-Incident)](#7-voice-report-speech-to-incident)
+8. [Map Data (GeoJSON)](#8-map-data-geojson)
+9. [WebSocket — Live Updates](#9-websocket--live-updates)
+10. [Complete Flow: Incident → SMS](#10-complete-flow-incident--sms)
+11. [Map Rendering Guide (Leaflet / Mapbox)](#11-map-rendering-guide-leaflet--mapbox)
+12. [WebSocket Integration Guide](#12-websocket-integration-guide)
+13. [Severity & Status Reference](#13-severity--status-reference)
+14. [Error Handling](#14-error-handling)
 
 ---
 
@@ -551,7 +552,101 @@ const data = await res.json();
 
 ---
 
-## 7. Map Data (GeoJSON)
+## 7. Voice Report (Speech-to-Incident)
+
+### `POST /incidents/voice-report`
+
+Accept a voice/audio recording from an officer, transcribe it via **AssemblyAI**, parse the transcript with **Groq**, and auto-create an incident — full pipeline fires automatically (recommendations, alerts, WebSocket broadcast).
+
+Supports **Hindi, Gujarati, English** and all other languages (AssemblyAI auto-detects).
+
+**Request** — `multipart/form-data`
+
+| Field | Type | Required | Notes |
+|-------|------|----------|-------|
+| `audio` | file upload | One of the two | mp3, wav, m4a, mp4, ogg |
+| `audio_url` | string (form field) | One of the two | Public URL to audio file |
+| `officer_id` | string | ❌ | Default `"voice_officer"` |
+
+**Option A — upload a file:**
+```bash
+curl -X POST http://localhost:8000/incidents/voice-report \
+  -F "audio=@/path/to/recording.mp3" \
+  -F "officer_id=badge_042"
+```
+
+**Option B — public URL:**
+```bash
+curl -X POST http://localhost:8000/incidents/voice-report \
+  -F "audio_url=https://your-bucket.s3.amazonaws.com/radio_call.mp3" \
+  -F "officer_id=badge_042"
+```
+
+**Response `201`**
+```json
+{
+  "incident_id": "c4da7990-fea1-4682-b90f-8ea6f5bf5997",
+  "status": "active",
+  "severity": "high",
+  "description": "Three-vehicle accident at Major Cross Road near Swastik, Fort area",
+  "corridor_id": "AMD-ASH-01",
+  "location_name": "Major Cross Road near Swastik, Fort area",
+  "lat": null,
+  "lon": null,
+  "transcript": "ऑफिसर बैज फोर्टी टू सीजी, रोड नियर स्वस्थिक...",
+  "parsed_by": "groq",
+  "created_at": "2026-03-21T22:16:02.721158+00:00"
+}
+```
+
+| Response Field | Notes |
+|----------------|-------|
+| `incident_id` | UUID — use for all follow-up calls |
+| `severity` | Groq-extracted from speech |
+| `corridor_id` | Matched to Ahmedabad corridor (e.g. `AMD-CGR-01`). `"UNKNOWN"` if Groq can't determine |
+| `location_name` | Plain-text location extracted from speech |
+| `lat` / `lon` | Extracted if mentioned in speech, else `null` |
+| `transcript` | Full verbatim transcript from AssemblyAI (supports non-Latin scripts) |
+| `parsed_by` | Always `"groq"` |
+
+**Internal pipeline after 201:**
+```
+AssemblyAI transcribes audio (~10–20s)
+        ↓
+Groq extracts: severity, corridor_id, description, lat/lon
+        ↓
+INSERT into incidents table
+INSERT into audit_log (source: "voice_report")
+        ↓
+Kafka: traffic.events.raw
+        ↓
+incident_processor → copilot_trigger → recommendations generated
+        ↓
+ws_fanout → WebSocket clients receive state_updated + recommendation_ready
+```
+
+**Error responses:**
+
+| HTTP | Meaning |
+|------|---------|
+| `400` | Neither `audio` nor `audio_url` provided |
+| `502` | AssemblyAI transcription failed (bad file, network error) |
+| `500` | DB insert failed |
+
+**Ahmedabad corridor ID mapping (for Groq):**
+
+| Corridor | ID |
+|----------|----|
+| CG Road | `AMD-CGR-01` |
+| SG Highway | `AMD-SGH-01` |
+| Ashram Road | `AMD-ASH-01` |
+| SP Ring Road | `AMD-SPRR-01` |
+| Drive-In Road | `AMD-DIN-01` |
+| NH-48 / Narol | `AMD-NHW-08` |
+
+---
+
+## 8. Map Data (GeoJSON)
 
 ### `GET /incidents/{incident_id}/map-data`
 Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Mapbox.
@@ -671,7 +766,7 @@ Returns a GeoJSON `FeatureCollection` ready to plug directly into Leaflet or Map
 
 ---
 
-## 8. WebSocket — Live Updates
+## 9. WebSocket — Live Updates
 
 ### `WS /ws/{incident_id}`
 Subscribe to real-time updates for a specific incident.
@@ -724,7 +819,7 @@ POST /incidents/{id}/vision
 
 ---
 
-## 9. Complete Flow: Incident → SMS
+## 10. Complete Flow: Incident → SMS
 
 This is the exact sequence your frontend should implement:
 
@@ -778,7 +873,7 @@ Step 8 — Publish all alerts + SMS
 
 ---
 
-## 10. Map Rendering Guide (Leaflet / Mapbox)
+## 11. Map Rendering Guide (Leaflet / Mapbox)
 
 ### Leaflet.js Example
 
@@ -926,7 +1021,7 @@ async function renderIncidentMapbox(incidentId, containerId) {
 
 ---
 
-## 11. WebSocket Integration Guide
+## 12. WebSocket Integration Guide
 
 ```javascript
 class IncidentSocket {
@@ -1011,7 +1106,7 @@ socket.connect();
 
 ---
 
-## 12. Severity & Status Reference
+## 13. Severity & Status Reference
 
 ### Incident Severity → UI Color
 | Severity | Hex | Use |
@@ -1045,7 +1140,7 @@ socket.connect();
 
 ---
 
-## 13. Error Handling
+## 14. Error Handling
 
 All errors return standard HTTP codes with a JSON body:
 

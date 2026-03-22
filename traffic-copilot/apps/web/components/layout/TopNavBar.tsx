@@ -7,7 +7,7 @@ export default function TopNavBar() {
         <div className="hidden lg:flex items-center gap-6 font-medium text-sm text-on-surface/60">
           <span className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
-            Location: Central District
+            Ahmedabad, Gujarat
           </span>
           <span>Status: Online</span>
           <span className="opacity-50 text-xs italic">Updated 2m ago</span>

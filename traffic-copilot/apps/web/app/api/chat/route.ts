@@ -4,13 +4,11 @@ const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 const GROQ_API_KEY = process.env.GROQ_API_KEY!;
 const GROQ_MODEL = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
-const SYSTEM_PROMPT = `You are IRIS (Intelligent Road Infrastructure System), an advanced AI traffic management assistant.
-
-You have access to real-time traffic data, camera feeds, sensor networks, and historical patterns.
-Speak concisely and professionally like an expert traffic analyst.
-
-Current system: Central District, Manhattan. Active incidents on HWY 101 (critical congestion).
-Provide specific, actionable traffic management recommendations. Keep responses under 200 words unless detailed analysis is requested.`;
+const SYSTEM_PROMPT = `You are TrafficCopilot, an AI-powered incident management co-pilot for Ahmedabad, India.
+You assist traffic control officers during live incidents with signal re-timing suggestions, diversion route recommendations, and public alert drafts.
+Current city: Ahmedabad, Gujarat, India.
+Key corridors: CG Road (AMD-CGR-01), SG Highway (AMD-SGH-01), Ashram Road (AMD-ASH-01), SP Ring Road (AMD-SPRR-01), Drive-In Road (AMD-DIN-01), NH-48/Narol (AMD-NHW-08).
+Speak concisely and professionally. Keep responses under 200 words unless detail is requested.`;
 
 export async function POST(req: NextRequest) {
   const { messages, incidentId, question, officerId = "officer-web" } = await req.json();

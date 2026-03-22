@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useSettings } from "@/ui_lib/settings-context";
 import type { MapboxHandle, MapMarker } from "@/components/map/MapboxMap";
 import type { BackendIncident, BackendRecommendation } from "@/ui_lib/backend";
+import { connectToIncident } from "@/src/lib/ws";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
 
@@ -14,9 +15,8 @@ const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN ?? "";
 const ROUTE_COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899"];
 
 const CAMERA_MARKERS: MapMarker[] = [
-  { id: "CAM-042", lat: 40.7529, lng: -73.9773, type: "camera", label: "CAM-042", popup: "5th Ave & Broadway — Normal Flow" },
-  { id: "CAM-018", lat: 40.7440, lng: -74.0021, type: "camera", label: "CAM-018", popup: "West End Terminal — Live" },
-  { id: "CAM-031", lat: 40.7690, lng: -73.9640, type: "camera", label: "CAM-031", popup: "Northern Gate — Live" },
+  { id: "CAM-042", lat: 23.0269, lng: 72.5855, type: "camera", label: "CAM-042", popup: "CG Road / Swastik Cross Roads — Live" },
+  { id: "CAM-018", lat: 23.0395, lng: 72.5039, type: "camera", label: "CAM-018", popup: "SG Highway Junction — Live" },
 ];
 
 const STYLE_URLS = {
@@ -171,14 +171,19 @@ export default function MapPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When active incident changes, load its map data
+  // When active incident changes, load its map data and wire WebSocket
   useEffect(() => {
-    if (activeIncident) {
-      loadIncidentMapData(activeIncident);
-      if (activeIncident.location_lat && activeIncident.location_lon) {
-        mapHandleRef.current?.flyTo([activeIncident.location_lon, activeIncident.location_lat], 15);
-      }
+    if (!activeIncident) return;
+    loadIncidentMapData(activeIncident);
+    if (activeIncident.location_lat && activeIncident.location_lon) {
+      mapHandleRef.current?.flyTo([activeIncident.location_lon, activeIncident.location_lat], 15);
     }
+    const wsDisconnect = connectToIncident(String(activeIncident.id), (msg) => {
+      if (msg.event_type === "recommendation_ready" || msg.event_type === "state_updated") {
+        loadIncidentMapData(activeIncident);
+      }
+    });
+    return () => wsDisconnect.close();
   }, [activeIncident, loadIncidentMapData]);
 
   // Auto-select critical incident on load
@@ -257,8 +262,8 @@ export default function MapPage() {
     ...(layers.incidents
       ? incidents.map((i) => ({
           id: String(i.id),
-          lat: (i as unknown as Record<string,number>).lat ?? (i.location_lat ?? 40.7589),
-          lng: (i as unknown as Record<string,number>).lng ?? (i.location_lon ?? -73.9851),
+          lat: (i as unknown as Record<string,number>).lat ?? (i.location_lat ?? 23.0269),
+          lng: (i as unknown as Record<string,number>).lng ?? (i.location_lon ?? 72.5855),
           type: "incident" as const,
           severity: i.severity === "medium" ? "moderate" as const : i.severity as "critical" | "high" | "low",
           label: String(i.id).slice(0, 8).toUpperCase(),
@@ -282,7 +287,7 @@ export default function MapPage() {
       <div className="absolute inset-0 top-16">
         <MapboxMap
           ref={mapHandleRef}
-          center={[-73.9857, 40.7484]}
+          center={[72.5855, 23.0269]}
           zoom={13}
           styleUrl={STYLE_URLS[mapStyle]}
           markers={markers}
@@ -361,7 +366,7 @@ export default function MapPage() {
             <span className="material-symbols-outlined">remove</span>
           </button>
           <div className="w-8 h-px bg-outline-variant/30"></div>
-          <button onClick={() => mapHandleRef.current?.flyTo([-73.9857, 40.7484], 13)} className="p-3 hover:bg-surface-container-low rounded-lg transition-colors text-on-surface-variant" title="Reset view">
+          <button onClick={() => mapHandleRef.current?.flyTo([72.5855, 23.0269], 13)} className="p-3 hover:bg-surface-container-low rounded-lg transition-colors text-on-surface-variant" title="Reset view">
             <span className="material-symbols-outlined">my_location</span>
           </button>
         </div>
