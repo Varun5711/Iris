@@ -22,16 +22,16 @@ function buildSessions(incidents: BackendIncident[]): ChatSession[] {
   const base: ChatSession[] = [
     {
       id: "sess-init",
-      title: "M4 Congestion Analysis",
+      title: "CG Road Congestion Analysis",
       time: "Today, 10:24 AM",
       messages: [
-        { id: "m1", role: "user", content: "Can you analyze the current congestion on the North Circular near Central Hospital?", timestamp: "10:24" },
-        { id: "m2", role: "assistant", content: "I've analyzed real-time data from sensors 12-B and 14-A. **Avoid the North Circular Main Route** for your 14:00 dispatch. Current traffic density is 22% higher than seasonal norms due to a minor lane closure.\n\n**Reasoning:** Live telemetry shows average speeds of 18mph between J4 and J5. Weather impact (light rain) is increasing braking distances by 15%.\n\n**Recommendation:** Use the Eastern Bypass via Route 7. ETA improvement: ~8 minutes.", timestamp: "10:24" },
+        { id: "m1", role: "user", content: "Can you analyze the current congestion on SG Highway near ISCON Cross Roads?", timestamp: "10:24" },
+        { id: "m2", role: "assistant", content: "I've analyzed real-time data from sensors CAM-018 and CAM-042. **Avoid SG Highway Main Route** for your 14:00 dispatch. Current traffic density is 22% higher than seasonal norms due to a minor lane blockage near ISCON.\n\n**Reasoning:** Live telemetry shows average speeds of 18 km/h between Prahladnagar and Bodakdev. Signal phase delays at the ISCON junction are compounding the backup.\n\n**Recommendation:** Use SP Ring Road via Satellite Road junction. ETA improvement: ~8 minutes.", timestamp: "10:24" },
       ],
     },
-    { id: "sess-2", title: "Accident Impact: Exit 12", time: "Yesterday", messages: [] },
-    { id: "sess-3", title: "Weekly Flow Reports", time: "2 days ago", messages: [] },
-    { id: "sess-4", title: "Camera 404 Malfunction", time: "Oct 24, 2023", messages: [] },
+    { id: "sess-2", title: "Accident Impact: Swastik Cross Roads", time: "Yesterday", messages: [] },
+    { id: "sess-3", title: "Weekly Flow Reports — Ahmedabad", time: "2 days ago", messages: [] },
+    { id: "sess-4", title: "Camera CAM-031 Malfunction", time: "Oct 24, 2023", messages: [] },
   ];
 
   // Add real incidents as chat history items
@@ -118,16 +118,17 @@ export default function AssistantPage() {
     const assistantId = (Date.now() + 1).toString();
     setMessages((p) => [...p, { id: assistantId, role: "assistant", content: "", timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) }]);
 
-    // Pick active incident for context
-    const activeIncident = incidents[0];
+    // Only use backend incident context when the active session is pinned to a specific incident.
+    // For general sessions, always use Groq with full conversation history so context is preserved.
+    const activeSession = sessions.find((s) => s.id === activeSessionId);
+    const sessionIncidentId = activeSession?.incidentId;
 
     try {
-      // Try backend first with full context
-      if (activeIncident) {
+      if (sessionIncidentId) {
         const res = await fetch("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ incidentId: activeIncident.id, question: q, officerId: "officer-web" }),
+          body: JSON.stringify({ incidentId: sessionIncidentId, question: q, officerId: "officer-web" }),
         });
         const ct = res.headers.get("content-type") ?? "";
         if (ct.includes("application/json")) {
@@ -139,8 +140,16 @@ export default function AssistantPage() {
         }
       }
 
-      // SSE streaming fallback (Groq direct)
-      const apiMessages = [...messages, userMsg].map((m) => ({ role: m.role, content: m.content }));
+      // General sessions: send full conversation history to Groq so prior context is preserved.
+      // Include a snapshot of live incidents so IRIS can reference real data.
+      const incidentContext = incidents.slice(0, 5).map((i) =>
+        `${i.corridor_id} (${i.severity}): ${i.description?.slice(0, 80)}`
+      ).join("\n");
+      const apiMessages = [
+        ...(incidentContext ? [{ role: "system" as const, content: `Live incidents:\n${incidentContext}` }] : []),
+        ...messages.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
+        { role: "user" as const, content: q },
+      ];
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

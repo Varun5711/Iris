@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import type { Incident } from "@/ui_lib/types";
 import type { MapMarker, MapboxHandle, GeoJSONLayerDef } from "@/components/map/MapboxMap";
-import type { BackendRecommendation, CopilotResponse, SignalAction, DiversionPlan } from "@/ui_lib/backend";
+import type { BackendRecommendation, CopilotResponse, SignalAction, DiversionPlan, BackendAlert } from "@/ui_lib/backend";
 import { useSettings } from "@/ui_lib/settings-context";
+import { connectToIncident } from "@/src/lib/ws";
 
 const MapboxMap = dynamic(() => import("@/components/map/MapboxMap"), { ssr: false });
 
+const BACKEND = process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000";
 const ROUTE_COLORS = ["#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EC4899"];
 
 export default function IncidentsPage() {
@@ -18,118 +20,144 @@ export default function IncidentsPage() {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [recommendations, setRecommendations] = useState<BackendRecommendation[]>([]);
   const [copilot, setCopilot] = useState<CopilotResponse | null>(null);
+  const [mapGeoData, setMapGeoData] = useState<GeoJSON.FeatureCollection | null>(null);
+  const [alerts, setAlerts] = useState<BackendAlert[]>([]);
   const [activeRouteIdx, setActiveRouteIdx] = useState(0);
   const [actionState, setActionState] = useState<"idle" | "loading" | "approved" | "rejected">("idle");
   const [actionMsg, setActionMsg] = useState("");
   const [backendLive, setBackendLive] = useState(false);
+  // Voice report modal
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const [voiceFile, setVoiceFile] = useState<File | null>(null);
+  const [voiceLoading, setVoiceLoading] = useState(false);
+  const [voiceMsg, setVoiceMsg] = useState("");
+  const [allIncidents, setAllIncidents] = useState<Incident[]>([]);
+  const [mapReady, setMapReady] = useState(false);
+  const [dataLoading, setDataLoading] = useState(false);
 
-  // Fetch incident
+  const loadIncidentData = useCallback(async (inc: Incident) => {
+    setDataLoading(true);
+    try {
+      // 1. Recommendations
+      const recRes = await fetch(`${BACKEND}/recommendations/${inc.id}`, {
+        signal: AbortSignal.timeout(6000),
+      });
+      if (recRes.ok) {
+        const recs: BackendRecommendation[] = await recRes.json();
+        setRecommendations(recs);
+        setBackendLive(true);
+        const first = recs.find((r) => r.copilot_response) ?? recs[0];
+        if (first?.copilot_response) setCopilot(first.copilot_response);
+      }
+    } catch {}
+
+    try {
+      // 2. Real OSM A*-routed map data
+      const mapRes = await fetch(`${BACKEND}/incidents/${inc.id}/map-data`, {
+        signal: AbortSignal.timeout(8000),
+      });
+      if (mapRes.ok) setMapGeoData(await mapRes.json());
+    } catch {}
+
+    try {
+      // 3. Draft alerts
+      const alertRes = await fetch(`${BACKEND}/alerts/${inc.id}`, {
+        signal: AbortSignal.timeout(4000),
+      });
+      if (alertRes.ok) setAlerts(await alertRes.json());
+    } catch {}
+
+    setDataLoading(false);
+  }, []);
+
+  // Fetch all incidents — auto-select most critical
   useEffect(() => {
     fetch("/api/incidents")
       .then((r) => r.json())
       .then((data: Incident[]) => {
+        setAllIncidents(data);
         const critical = data.find((i) => i.severity === "critical") ?? data[0];
-        setIncident(critical ?? null);
+        if (critical) setIncident(critical);
       })
       .catch(() => {});
   }, []);
 
-  // Fetch recommendations when incident changes
+  // Load all data when incident is set.
+  // Also reset mapReady so the false→true transition always re-fires the layer effect,
+  // preventing a race where mapGeoData arrives while the new map isn't ready yet.
   useEffect(() => {
     if (!incident) return;
-    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000"}/recommendations/${incident.id}`, {
-      signal: AbortSignal.timeout(4000),
-    })
-      .then((r) => r.json())
-      .then((recs: BackendRecommendation[]) => {
-        setRecommendations(recs);
-        setBackendLive(true);
-        // Use first rec's copilot_response
-        const first = recs.find((r) => r.copilot_response) ?? recs[0];
-        if (first?.copilot_response) setCopilot(first.copilot_response);
-      })
-      .catch(() => {
-        // Use mock copilot data when backend is offline
-        setCopilot({
-          incident_summary: `${incident.title} — Active incident requiring immediate signal coordination.`,
-          signal_actions: [
-            { intersection_id: "INT-7th-Comal", action: "Extend green phase by +18s on northbound approach", expected_impact: "Queue reduction ~40%", confidence: 0.92 },
-            { intersection_id: "INT-Madison-42nd", action: "Reduce cycle length from 90s to 72s", expected_impact: "Throughput +22%", confidence: 0.87 },
-            { intersection_id: "INT-Broadway-34th", action: "Activate pedestrian hold during peak flush", expected_impact: "Vehicle throughput +15%", confidence: 0.84 },
-          ],
-          diversion_plan: {
-            route_description: "Via Kings Highway bypass — avoids congested corridor entirely",
-            estimated_extra_minutes: 7,
-            traffic_redistribution_pct: 34,
-            confidence: 0.91,
-            evidence_refs: ["osm:graph", "hist:peak"],
-            waypoints: [
-              { name: "On-ramp Broadway", lat: incident.lat + 0.002, lng: incident.lng - 0.003 },
-              { name: "Kings Hwy Junction", lat: incident.lat + 0.008, lng: incident.lng - 0.006 },
-              { name: "Exit Flatbush Ave", lat: incident.lat + 0.014, lng: incident.lng - 0.002 },
-            ],
-          },
-          alert_drafts: [],
-          narrative: "IRIS recommends coordinated signal re-timing with diversion activation.",
-          overall_confidence: 0.91,
-          review_required: true,
-          evidence_refs: ["osm:manhattan", "groq:llm"],
-        });
-      });
-  }, [incident]);
+    setMapReady(false);
+    setMapGeoData(null);
+    loadIncidentData(incident);
+  }, [incident, loadIncidentData]);
 
-  // Add GeoJSON layers when copilot data arrives
+  // Wire WebSocket — auto-refresh when recommendation arrives
   useEffect(() => {
-    if (!copilot || !incident) return;
+    if (!incident) return;
+    const ws = connectToIncident(incident.id, (msg) => {
+      if (msg.event_type === "recommendation_ready" || msg.event_type === "state_updated") {
+        loadIncidentData(incident);
+      }
+    });
+    return () => ws.close();
+  }, [incident, loadIncidentData]);
+
+  // Add GeoJSON layers from real OSM A* map-data — waits for both data AND map to be ready
+  useEffect(() => {
+    if (!mapGeoData || !incident || !mapReady) return;
     const map = mapRef.current;
     if (!map) return;
 
-    // Diversion route layer from waypoints
-    if (copilot.diversion_plan?.waypoints && copilot.diversion_plan.waypoints.length >= 2) {
-      const waypoints = copilot.diversion_plan.waypoints;
-      const color = ROUTE_COLORS[activeRouteIdx % ROUTE_COLORS.length];
-      const layerDef: GeoJSONLayerDef = {
-        id: "diversion-route-0",
-        sourceId: "diversion-route-0-src",
-        data: {
-          type: "FeatureCollection",
-          features: [{
-            type: "Feature",
-            geometry: {
-              type: "LineString",
-              coordinates: waypoints.map((w) => [w.lng, w.lat]),
-            },
-            properties: { route: "primary" },
-          }],
-        },
+    const features = mapGeoData.features ?? [];
+
+    // Diversion route(s) — same rendering as live map page (no coord filter, identical paint)
+    const diversionFeatures = features.filter(
+      (f) => f.properties?.feature_type === "diversion_route"
+    );
+    diversionFeatures.forEach((feat, i) => {
+      if (!settings.mapLayers.diversionRoutes) return;
+      const color = ROUTE_COLORS[i % ROUTE_COLORS.length];
+      const layerId = `diversion-route-${i}`;
+      map.addGeoJSONLayer({
+        id: layerId,
+        sourceId: `${layerId}-src`,
+        data: { type: "FeatureCollection", features: [feat] },
         layerType: "line",
         paint: {
           "line-color": color,
-          "line-width": 5,
-          "line-dasharray": [2, 1],
-          "line-opacity": 0.9,
+          "line-width": i === 0 ? 5 : 3.5,
+          "line-opacity": i === 0 ? 0.95 : 0.75,
+          "line-dasharray": [4, 2],
         },
-      };
-      if (settings.mapLayers.diversionRoutes) map.addGeoJSONLayer(layerDef);
+        layout: { "line-cap": "round", "line-join": "round" },
+      });
+    });
+
+    // Affected road segments (orange)
+    const affectedFeatures = features.filter(
+      (f) => f.properties?.feature_type === "affected_segment"
+    );
+    if (affectedFeatures.length > 0 && settings.mapLayers.affectedSegments) {
+      map.addGeoJSONLayer({
+        id: "affected-segments",
+        sourceId: "affected-segments-src",
+        data: { type: "FeatureCollection", features: affectedFeatures },
+        layerType: "line",
+        layout: { "line-join": "round", "line-cap": "round" },
+        paint: { "line-color": "#FF4500", "line-width": 6, "line-opacity": 0.85 },
+      });
     }
 
-    // Signal action circles
-    if (copilot.signal_actions?.length) {
-      const features = copilot.signal_actions.map((sa, i) => ({
-        type: "Feature" as const,
-        geometry: {
-          type: "Point" as const,
-          coordinates: [
-            incident.lng + (i - 1) * 0.003,
-            incident.lat + (i % 2 === 0 ? 0.002 : -0.002),
-          ],
-        },
-        properties: { intersection: sa.intersection_id, action: sa.action },
-      }));
-      const signalLayerDef: GeoJSONLayerDef = {
+    // Signal action points (yellow)
+    const signalFeatures = features.filter(
+      (f) => f.properties?.feature_type === "signal_action"
+    );
+    if (signalFeatures.length > 0 && settings.mapLayers.signals) {
+      map.addGeoJSONLayer({
         id: "signal-circles",
         sourceId: "signal-circles-src",
-        data: { type: "FeatureCollection", features },
+        data: { type: "FeatureCollection", features: signalFeatures },
         layerType: "circle",
         paint: {
           "circle-radius": 10,
@@ -138,13 +166,66 @@ export default function IncidentsPage() {
           "circle-stroke-color": "#fff",
           "circle-opacity": 0.9,
         },
-      };
-      if (settings.mapLayers.signals) map.addGeoJSONLayer(signalLayerDef);
+      });
+    }
+
+    // Fly to incident point
+    const incidentPoint = features.find(
+      (f) => f.properties?.feature_type === "incident_point"
+    );
+    if (incidentPoint && incidentPoint.geometry.type === "Point") {
+      const [lon, lat] = (incidentPoint.geometry as GeoJSON.Point).coordinates;
+      map.flyTo([lon, lat], 14);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [copilot, incident]);
+  }, [mapGeoData, incident, mapReady]);
 
-  // Sync map layer visibility with settings
+  // Fallback: when backend has no A* diversion route, use Mapbox Directions API with copilot waypoints
+  // This gives real road-following routes even when the OSM graph is sparse
+  useEffect(() => {
+    const noAStarRoute = !(mapGeoData?.features ?? []).some(
+      (f) => f.properties?.feature_type === "diversion_route"
+    );
+    if (!noAStarRoute || !copilot || !incident || !mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const waypoints = copilot.diversion_plan?.waypoints;
+    if (!waypoints || waypoints.length < 2) return;
+    if (!settings.mapLayers.diversionRoutes) return;
+
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) return;
+
+    const coords = waypoints.map((w) => `${w.lng},${w.lat}`).join(";");
+    (async () => {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?geometries=geojson&overview=full&access_token=${token}`,
+          { signal: AbortSignal.timeout(6000) }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        const geometry = data.routes?.[0]?.geometry;
+        if (!geometry) return;
+        map.addGeoJSONLayer({
+          id: "diversion-route-0",
+          sourceId: "diversion-route-0-src",
+          data: { type: "FeatureCollection", features: [{ type: "Feature", geometry, properties: {} }] },
+          layerType: "line",
+          paint: {
+            "line-color": ROUTE_COLORS[0],
+            "line-width": 5,
+            "line-opacity": 0.95,
+            "line-dasharray": [4, 2],
+          },
+          layout: { "line-cap": "round", "line-join": "round" },
+        });
+      } catch {}
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [copilot, incident, mapGeoData, mapReady]);
+
+  // Sync layer visibility with settings
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -152,27 +233,75 @@ export default function IncidentsPage() {
     map.setLayerVisibility("signal-circles", settings.mapLayers.signals);
   }, [settings.mapLayers]);
 
+  // Approve / reject recommendation
   const handleAction = async (action: "approve" | "reject") => {
     if (!incident || actionState === "loading") return;
     setActionState("loading");
     try {
       const recId = recommendations[0]?.id;
-      const endpoint = recId
-        ? `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000"}/recommendations/${recId}/${action}`
-        : `/api/alerts/${incident.id}`;
+      if (!recId) throw new Error("No recommendation to action");
+      const endpoint = `${BACKEND}/recommendations/${recId}/${action}`;
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ officer_id: "officer-web", action, incidentId: incident.id }),
+        body: JSON.stringify({ officer_id: "officer-web" }),
       });
       const data = await res.json();
       setActionState(action === "approve" ? "approved" : "rejected");
-      setActionMsg(data.message ?? (action === "approve" ? "Recommendation approved and queued for execution." : "Recommendation rejected."));
-    } catch {
+      setActionMsg(data.message ?? (action === "approve" ? "Recommendation approved." : "Recommendation rejected."));
+    } catch (err) {
       setActionState("idle");
-      setActionMsg("Failed to submit. Please try again.");
+      setActionMsg(`Failed: ${String(err)}`);
     }
   };
+
+  // Publish a single alert
+  const publishAlert = async (alertId: string) => {
+    try {
+      const res = await fetch(`${BACKEND}/alerts/${alertId}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ officer_id: "officer-web" }),
+      });
+      if (res.ok) {
+        setAlerts((prev) => prev.map((a) => a.id === alertId ? { ...a, status: "published" } : a));
+      }
+    } catch {}
+  };
+
+  // Voice report submission
+  const submitVoiceReport = async () => {
+    if (!voiceFile) return;
+    setVoiceLoading(true);
+    setVoiceMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("audio", voiceFile);
+      fd.append("officer_id", "officer-web");
+      const res = await fetch(`${BACKEND}/incidents/voice-report`, { method: "POST", body: fd });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setVoiceMsg(`✓ Incident created — severity: ${data.severity}, corridor: ${data.corridor_id ?? "unknown"}`);
+      setVoiceFile(null);
+    } catch (err) {
+      setVoiceMsg(`Failed: ${String(err)}`);
+    } finally {
+      setVoiceLoading(false);
+    }
+  };
+
+  // Switch active incident — clears all state so new incident loads fresh
+  const selectIncident = useCallback((inc: Incident) => {
+    setMapReady(false);
+    setDataLoading(true);     // show loading overlay immediately
+    setIncident(inc);
+    setMapGeoData(null);
+    setCopilot(null);
+    setRecommendations([]);
+    setAlerts([]);
+    setActionState("idle");
+    setActionMsg("");
+  }, []);
 
   const markers: MapMarker[] = incident
     ? [{ id: incident.id, lat: incident.lat, lng: incident.lng, type: "incident", severity: incident.severity, label: incident.id, popup: incident.title }]
@@ -186,8 +315,121 @@ export default function IncidentsPage() {
   const diversionPlan: DiversionPlan | undefined = copilot?.diversion_plan;
   const overallConfidence = copilot?.overall_confidence ?? 0.91;
 
+  // True if map-data contains at least one diversion route
+  const hasAStarRoute = (mapGeoData?.features ?? []).some(
+    (f) => f.properties?.feature_type === "diversion_route"
+  );
+
+  const channelColor: Record<string, string> = {
+    vms: "#3B82F6",
+    radio: "#10B981",
+    social: "#8B5CF6",
+  };
+  const channelLabel: Record<string, string> = {
+    vms: "VMS Board",
+    radio: "Radio Broadcast",
+    social: "Social Media",
+  };
+
+  const sevColor: Record<string, string> = {
+    critical: "#BA1A1A",
+    high: "#D97706",
+    moderate: "#EAB308",
+    low: "#2A6C0D",
+  };
+
   return (
-    <main className="min-h-screen bg-surface p-8 pt-24 pb-12">
+    <main className="h-screen flex overflow-hidden pt-16 bg-surface">
+      {/* ── LEFT: Incidents List Sidebar ── */}
+      <div className="w-72 shrink-0 flex flex-col border-r border-outline-variant/10 bg-white overflow-y-auto">
+        <div className="px-4 py-4 border-b border-outline-variant/10 shrink-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Active Incidents</p>
+          <p className="text-xs text-on-surface-variant mt-0.5">{allIncidents.length} incident{allIncidents.length !== 1 ? "s" : ""} live</p>
+        </div>
+        <div className="flex-1 divide-y divide-outline-variant/10">
+          {allIncidents.length === 0 && (
+            <div className="p-6 text-center text-xs text-on-surface-variant animate-pulse">Loading incidents…</div>
+          )}
+          {allIncidents.map((inc) => {
+            const isActive = inc.id === incident?.id;
+            return (
+              <button
+                key={inc.id}
+                onClick={() => selectIncident(inc)}
+                className={`w-full text-left px-4 py-4 transition-all hover:bg-surface-container-low/50 ${isActive ? "border-l-4 border-primary bg-primary/5" : "border-l-4 border-transparent"}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div
+                    className="w-2.5 h-2.5 rounded-full shrink-0 mt-1.5"
+                    style={{ backgroundColor: sevColor[inc.severity] ?? "#888" }}
+                  />
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-bold uppercase tracking-wide mb-0.5"
+                      style={{ color: sevColor[inc.severity] ?? "#888" }}>
+                      {inc.severity}
+                    </p>
+                    <p className="text-xs font-semibold text-on-surface leading-snug line-clamp-2 mb-1">
+                      {inc.title}
+                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-[11px] text-on-surface-variant">location_on</span>
+                      <span className="text-[10px] text-on-surface-variant truncate">{inc.location}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="text-[10px] text-on-surface-variant font-mono">
+                        {inc.lat.toFixed(4)}°N, {inc.lng.toFixed(4)}°E
+                      </span>
+                    </div>
+                    {isActive && (
+                      <span className="mt-1.5 inline-flex items-center gap-1 text-[9px] font-bold text-primary">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                        VIEWING
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── RIGHT: Incident Detail ── */}
+      <div className="flex-1 overflow-y-auto p-8 pb-12">
+      {/* Voice Report Modal */}
+      {voiceOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
+            <h2 className="text-lg font-bold text-on-surface mb-2">Voice Incident Report</h2>
+            <p className="text-xs text-on-surface-variant mb-6">Upload an audio recording (mp3/wav/mp4/ogg). AssemblyAI transcribes it, Groq extracts incident details, and an incident is created automatically.</p>
+            <input
+              type="file"
+              accept="audio/*,video/mp4"
+              onChange={(e) => setVoiceFile(e.target.files?.[0] ?? null)}
+              className="w-full text-sm text-on-surface-variant mb-4 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary"
+            />
+            {voiceMsg && (
+              <p className={`text-xs mb-4 font-medium ${voiceMsg.startsWith("✓") ? "text-primary" : "text-error"}`}>{voiceMsg}</p>
+            )}
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setVoiceOpen(false); setVoiceMsg(""); setVoiceFile(null); }}
+                className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitVoiceReport}
+                disabled={!voiceFile || voiceLoading}
+                className="flex-1 py-2.5 rounded-full signature-gradient text-white text-sm font-bold disabled:opacity-50"
+              >
+                {voiceLoading ? "Processing…" : "Submit Report"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Page Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
@@ -197,6 +439,12 @@ export default function IncidentsPage() {
             <span className="text-primary font-semibold">{incident?.id ?? "INC-8821"}</span>
             {backendLive && (
               <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full">BACKEND LIVE</span>
+            )}
+            {hasAStarRoute && (
+              <span className="px-2 py-0.5 bg-[#3399ff]/10 text-[#3399ff] text-[10px] font-bold rounded-full">A* ROUTING</span>
+            )}
+            {mapGeoData && !hasAStarRoute && !dataLoading && (
+              <span className="px-2 py-0.5 bg-[#D97706]/10 text-[#D97706] text-[10px] font-bold rounded-full">MAPBOX FALLBACK</span>
             )}
           </nav>
           <h1 className="text-4xl font-extrabold tracking-tight text-on-surface mb-2">
@@ -224,6 +472,13 @@ export default function IncidentsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setVoiceOpen(true)}
+            className="px-5 py-2.5 rounded-full font-bold text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-2"
+          >
+            <span className="material-symbols-outlined text-sm">mic</span>
+            Voice Report
+          </button>
           <button className="px-6 py-2.5 rounded-full font-bold text-sm text-primary hover:bg-primary/5 transition-colors">
             Export Report
           </button>
@@ -303,17 +558,27 @@ export default function IncidentsPage() {
           <div className="h-[500px] relative rounded-xl overflow-hidden">
             {incident ? (
               <MapboxMap
+                key={incident.id}
                 ref={mapRef}
                 center={[incident.lng, incident.lat]}
                 zoom={15}
                 markers={markers}
                 className="w-full h-full"
                 styleUrl="mapbox://styles/mapbox/light-v11"
-                onMapReady={(h) => { mapRef.current = h; }}
+                onMapReady={(h) => { mapRef.current = h; setMapReady(true); }}
               />
             ) : (
               <div className="w-full h-full bg-surface-container-low flex items-center justify-center">
                 <span className="material-symbols-outlined text-4xl text-on-surface-variant animate-pulse">map</span>
+              </div>
+            )}
+
+            {/* Loading overlay — shown while fetching map-data / recommendations */}
+            {dataLoading && (
+              <div className="absolute inset-0 z-20 bg-white/60 backdrop-blur-sm flex flex-col items-center justify-center gap-3 rounded-xl">
+                <div className="w-10 h-10 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+                <p className="text-xs font-bold text-primary uppercase tracking-widest">Computing A* Route…</p>
+                <p className="text-[10px] text-on-surface-variant">Fetching map data &amp; recommendations</p>
               </div>
             )}
 
@@ -341,6 +606,14 @@ export default function IncidentsPage() {
                 </div>
               </div>
             </div>
+
+            {/* A* route status pill — shown when data loaded but no valid route yet */}
+            {mapGeoData && !hasAStarRoute && !dataLoading && (
+              <div className="absolute top-4 right-4 z-10 flex items-center gap-2 bg-[#D97706]/10 border border-[#D97706]/30 text-[#D97706] px-3 py-1.5 rounded-full text-[10px] font-bold backdrop-blur-sm">
+                <span className="material-symbols-outlined text-[13px]">pending</span>
+                Using Mapbox road routing (OSM graph unavailable)
+              </div>
+            )}
 
             <div className="absolute bottom-4 left-4 right-4 z-10 bg-white/90 backdrop-blur-md p-4 rounded-xl shadow-2xl flex items-center justify-between border border-white">
               <div className="flex items-center gap-4">
@@ -374,7 +647,7 @@ export default function IncidentsPage() {
                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: ROUTE_COLORS[activeRouteIdx] }}></span>
                 <h4 className="text-sm font-bold text-on-surface">Diversion Route — Activation Sequence</h4>
                 <span className="ml-auto text-[10px] font-bold px-2 py-0.5 bg-primary/10 text-primary rounded-full">
-                  {Math.round(diversionPlan.confidence * 100)}% confidence
+                  {Math.round((diversionPlan.confidence ?? 0) * 100)}% confidence
                 </span>
               </div>
               <p className="text-xs text-on-surface-variant mb-4">{diversionPlan.route_description}</p>
@@ -388,8 +661,10 @@ export default function IncidentsPage() {
                   <p className="text-base font-extrabold text-primary">{diversionPlan.traffic_redistribution_pct}%</p>
                 </div>
                 <div className="bg-surface p-3 rounded-lg">
-                  <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Waypoints</p>
-                  <p className="text-base font-extrabold text-on-surface">{diversionPlan.waypoints.length}</p>
+                  <p className="text-[10px] text-on-surface-variant uppercase font-bold mb-1">Road Nodes</p>
+                  <p className="text-base font-extrabold text-on-surface">
+                    {mapGeoData?.features.find(f => f.properties?.feature_type === "diversion_route")?.properties?.coordinate_count ?? diversionPlan.waypoints.length}
+                  </p>
                 </div>
               </div>
               {/* Activation sequence */}
@@ -410,6 +685,44 @@ export default function IncidentsPage() {
               </div>
             </div>
           )}
+
+          {/* Alerts Panel */}
+          {alerts.length > 0 && (
+            <div className="bg-surface-container-lowest p-5 rounded-xl shadow-sm">
+              <h4 className="text-xs font-bold uppercase tracking-widest text-on-surface-variant mb-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-sm">campaign</span>
+                Public Alerts
+              </h4>
+              <div className="space-y-3">
+                {alerts.map((alert) => (
+                  <div key={alert.id} className="p-3 rounded-lg border" style={{ borderColor: `${channelColor[alert.channel] ?? "#888"}33` }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white"
+                        style={{ backgroundColor: channelColor[alert.channel] ?? "#888" }}
+                      >
+                        {channelLabel[alert.channel] ?? alert.channel.toUpperCase()}
+                      </span>
+                      {alert.status === "published" ? (
+                        <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                          Published
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => publishAlert(alert.id)}
+                          className="text-[10px] font-bold px-3 py-1 rounded-full bg-primary text-white hover:bg-primary/80 transition-colors"
+                        >
+                          Publish
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-xs text-on-surface leading-relaxed">{alert.draft_text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* RIGHT: AI Recommendations */}
@@ -419,7 +732,7 @@ export default function IncidentsPage() {
               <div className="w-8 h-8 bg-secondary-container rounded-full flex items-center justify-center">
                 <span className="material-symbols-outlined text-primary text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>smart_toy</span>
               </div>
-              <h3 className="text-sm font-bold text-on-surface">IRIS AI Recommendations</h3>
+              <h3 className="text-sm font-bold text-on-surface">TrafficCopilot AI</h3>
             </div>
             <div className="space-y-4">
               {signalActions.slice(0, 2).map((sa, i) => (
@@ -448,26 +761,10 @@ export default function IncidentsPage() {
               )}
 
               {!signalActions.length && !diversionPlan && (
-                <>
-                  <div className="p-4 bg-surface rounded-xl border-l-4 border-primary">
-                    <p className="text-[10px] font-bold text-primary uppercase mb-1">Signal Strategy</p>
-                    <p className="text-sm font-semibold text-on-surface mb-2">Adjust Cycle Pattern A-42</p>
-                    <p className="text-xs text-on-surface-variant mb-3">Increase green-time for Northbound flow by 15s to flush the exit queue.</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-primary-fixed text-on-primary-fixed px-2 py-0.5 rounded font-bold">High Impact</span>
-                      <span className="text-[10px] text-on-surface-variant">Est. recovery: 12m</span>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-surface rounded-xl border-l-4 border-primary">
-                    <p className="text-[10px] font-bold text-primary uppercase mb-1">Diversion Route</p>
-                    <p className="text-sm font-semibold text-on-surface mb-2">Activate VMS Signs Sector 4</p>
-                    <p className="text-xs text-on-surface-variant mb-3">Redirect non-essential traffic to alternate Route 7 bypass.</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] bg-secondary-container text-on-secondary-container px-2 py-0.5 rounded font-bold">Moderate</span>
-                      <span className="text-[10px] text-on-surface-variant">Impact: -20% Vol.</span>
-                    </div>
-                  </div>
-                </>
+                <div className="p-4 bg-surface rounded-xl border-l-4 border-primary">
+                  <p className="text-[10px] font-bold text-primary uppercase mb-1">Status</p>
+                  <p className="text-sm text-on-surface-variant">Waiting for AI recommendations…</p>
+                </div>
               )}
 
               <div className="pt-4 border-t border-surface-container">
@@ -531,16 +828,16 @@ export default function IncidentsPage() {
                     </div>
                   ))
                 : [
-                    { icon: "traffic", label: "Signals 101-A, 101-B" },
-                    { icon: "screenshot_monitor", label: "VMS Panel 04, 05" },
-                    { icon: "camera_outdoor", label: "CCTV Cam 22-North" },
+                    { icon: "traffic", label: "Signals — pending" },
+                    { icon: "screenshot_monitor", label: "VMS — pending" },
+                    { icon: "camera_outdoor", label: "CCTV — pending" },
                   ].map(({ icon, label }) => (
                     <div key={label} className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="material-symbols-outlined text-lg text-on-surface-variant">{icon}</span>
                         <span className="text-xs font-medium text-on-surface">{label}</span>
                       </div>
-                      <span className="w-2 h-2 rounded-full bg-primary"></span>
+                      <span className="w-2 h-2 rounded-full bg-surface-container"></span>
                     </div>
                   ))}
             </div>
@@ -549,12 +846,13 @@ export default function IncidentsPage() {
           {/* Narrative */}
           {copilot?.narrative && (
             <div className="bg-primary/5 p-5 rounded-xl">
-              <p className="text-[10px] font-bold uppercase text-primary mb-2">IRIS Narrative</p>
+              <p className="text-[10px] font-bold uppercase text-primary mb-2">TrafficCopilot Narrative</p>
               <p className="text-xs text-on-surface leading-relaxed">{copilot.narrative}</p>
             </div>
           )}
         </div>
       </div>
+      </div>{/* end right detail panel */}
     </main>
   );
 }

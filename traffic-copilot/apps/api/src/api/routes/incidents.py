@@ -1021,45 +1021,120 @@ async def get_map_data(
     diversion_added = False
 
     # 3a. Try to compute real route via OSM graph (blocked edges = affected segs)
-    if graph is not None and segments and inc_lat and inc_lon:
+    if graph is not None and (segments or (inc_lat and inc_lon)):
         try:
             from src.modules.routing.diversion import compute_diversion_routes
 
+            # Only block the top-N most congested segments (sorted DESC by congestion_pct).
+            # Blocking all segments can disconnect the graph entirely — capping at 15
+            # keeps the primary jam impassable while still allowing alternate paths.
             blocked_edges = [
                 (int(s["osm_node_u"]), int(s["osm_node_v"]))
-                for s in segments
+                for s in segments[:15]
                 if s.get("osm_node_u") and s.get("osm_node_v")
             ]
-            origin_node = await get_node_nearest(inc_lat, inc_lon, graph)
-            # Use the last affected segment's v-node as destination
-            dest_node = int(segments[-1]["osm_node_v"]) if segments else 0
 
-            if origin_node and dest_node and origin_node != dest_node:
-                routes = await compute_diversion_routes(
-                    origin_node=origin_node,
-                    destination_node=dest_node,
-                    graph=graph,
-                    blocked_edges=blocked_edges,
-                    k=1,
-                )
-                if routes:
-                    r = routes[0]
-                    features.append({
-                        "type": "Feature",
-                        "geometry": r["route_geojson"],
-                        "properties": {
-                            "feature_type": "diversion_route",
-                            "source": "osm_graph",
-                            "road_names": r["road_names"],
-                            "distance_m": r["distance_m"],
-                            "estimated_minutes": r["estimated_minutes"],
-                            "description": diversion_plan.get("route_description", "") if diversion_plan else "",
-                            "stroke_color": "#3399ff",
-                            "stroke_width": 4,
-                            "stroke_dash": "8,4",
-                        },
-                    })
-                    diversion_added = True
+            # Derive origin: prefer incident lat/lon; fall back to first valid segment's u-node.
+            if inc_lat and inc_lon:
+                origin_node = await get_node_nearest(inc_lat, inc_lon, graph)
+            else:
+                origin_node = 0
+                for seg in segments:
+                    u = int(seg.get("osm_node_u") or 0)
+                    if u and u in graph:
+                        origin_node = u
+                        # Also backfill inc_lat/inc_lon from this node so the
+                        # fallback dest offset below has a reference point.
+                        nd = graph.nodes.get(u, {})
+                        inc_lat = nd.get("y", 0.0)
+                        inc_lon = nd.get("x", 0.0)
+                        break
+
+            # Pick destination: farthest valid osm_node_v from origin across all segments.
+            # segments[-1]["osm_node_v"] is unreliable — that segment may have
+            # osm_node_v=0 (map-match failure) or a node not in the loaded graph.
+            dest_node = 0
+            if origin_node:
+                origin_x = graph.nodes.get(origin_node, {}).get("x", inc_lon)
+                origin_y = graph.nodes.get(origin_node, {}).get("y", inc_lat)
+                best_dist = -1.0
+                for seg in segments:
+                    v = int(seg.get("osm_node_v") or 0)
+                    if v and v in graph and v != origin_node:
+                        vd = graph.nodes.get(v, {})
+                        dx = float(vd.get("x", 0)) - origin_x
+                        dy = float(vd.get("y", 0)) - origin_y
+                        dist = (dx ** 2 + dy ** 2) ** 0.5
+                        if dist > best_dist:
+                            best_dist = dist
+                            dest_node = v
+
+            # Hard fallback: snap a point ~1.5 km north of the incident
+            if not dest_node and inc_lat and inc_lon:
+                dest_node = await get_node_nearest(inc_lat + 0.0135, inc_lon, graph)
+
+            # Build list of destination candidates to try (in priority order).
+            # Geographic offsets (~1.5 km) come FIRST so the blue diversion line
+            # is always a meaningful length. Segment-based node is a last resort.
+            dest_candidates: list[int] = []
+            if inc_lat and inc_lon:
+                for dlat, dlon in [(0.013, 0), (-0.013, 0), (0, 0.013), (0, -0.013), (0.009, 0.009), (-0.009, -0.009)]:
+                    cand = await get_node_nearest(inc_lat + dlat, inc_lon + dlon, graph)
+                    if cand and cand != origin_node and cand not in dest_candidates:
+                        dest_candidates.append(cand)
+            if dest_node and dest_node not in dest_candidates:
+                dest_candidates.append(dest_node)
+
+            routes = []
+            if origin_node:
+                for d_cand in dest_candidates:
+                    if not d_cand or d_cand == origin_node:
+                        continue
+                    routes = await compute_diversion_routes(
+                        origin_node=origin_node,
+                        destination_node=d_cand,
+                        graph=graph,
+                        blocked_edges=blocked_edges,
+                        k=1,
+                    )
+                    if routes:
+                        break
+
+            # If origin is isolated with blocked edges, retry without any blocking.
+            # The origin node may only be reachable via the blocked edges themselves;
+            # removing the constraint lets A* find the nearest detour path.
+            if not routes and origin_node and dest_candidates:
+                for d_cand in dest_candidates[:4]:
+                    if not d_cand or d_cand == origin_node:
+                        continue
+                    routes = await compute_diversion_routes(
+                        origin_node=origin_node,
+                        destination_node=d_cand,
+                        graph=graph,
+                        blocked_edges=[],   # no edge blocking — show road path regardless
+                        k=1,
+                    )
+                    if routes:
+                        break
+
+            if routes:
+                r = routes[0]
+                features.append({
+                    "type": "Feature",
+                    "geometry": r["route_geojson"],
+                    "properties": {
+                        "feature_type": "diversion_route",
+                        "source": "osm_graph",
+                        "road_names": r["road_names"],
+                        "distance_m": r["distance_m"],
+                        "estimated_minutes": r["estimated_minutes"],
+                        "description": diversion_plan.get("route_description", "") if diversion_plan else "",
+                        "stroke_color": "#3399ff",
+                        "stroke_width": 4,
+                        "stroke_dash": "8,4",
+                    },
+                })
+                diversion_added = True
         except Exception as exc:
             logger.warning("map-data: diversion route compute failed (non-fatal)", error=str(exc))
 
@@ -1068,7 +1143,16 @@ async def get_map_data(
     waypoint_osm_routed = False  # tracks actual outcome for meta
     if not diversion_added and diversion_plan:
         waypoints = diversion_plan.get("waypoints") or []
-        valid_wps = [wp for wp in waypoints if wp.get("lat") and wp.get("lng")]
+        # Reject hallucinated LLM coordinates — Ahmedabad graph covers roughly
+        # lat 22.7–23.4, lng 72.3–73.1. Coords outside this are fake.
+        _AHM_LAT = (22.7, 23.4)
+        _AHM_LNG = (72.3, 73.1)
+        valid_wps = [
+            wp for wp in waypoints
+            if wp.get("lat") and wp.get("lng")
+            and _AHM_LAT[0] <= float(wp["lat"]) <= _AHM_LAT[1]
+            and _AHM_LNG[0] <= float(wp["lng"]) <= _AHM_LNG[1]
+        ]
         if len(valid_wps) >= 2:
             all_coords: list[list[float]] = []
             road_names_collected: list[str] = []
@@ -1208,7 +1292,10 @@ async def get_map_data(
             "diversion_source": (
                 "osm_graph" if diversion_added
                 else "osm_waypoint_routing" if waypoint_osm_routed
-                else "llm_waypoints" if (diversion_plan and diversion_plan.get("waypoints"))
+                else "llm_waypoints" if any(
+                    f.get("properties", {}).get("source") == "llm_waypoints"
+                    for f in features
+                )
                 else "none"
             ),
             "signal_actions_count": len(signal_actions),

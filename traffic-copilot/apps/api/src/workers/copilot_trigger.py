@@ -181,6 +181,19 @@ async def _handle_message(payload: dict[str, Any], topic: str) -> None:
         )
         return
 
+    # Skip if we already have a recommendation for this incident — prevents
+    # Groq from being hammered on every server restart / feed_replay cycle.
+    from src.db.session import AsyncSessionLocal
+    from sqlalchemy import text as _text
+    async with AsyncSessionLocal() as _chk:
+        _existing = await _chk.execute(
+            _text("SELECT id FROM recommendations WHERE incident_id = CAST(:iid AS uuid) LIMIT 1"),
+            {"iid": incident_id},
+        )
+        if _existing.first():
+            logger.info("copilot_trigger: recommendation exists, skipping Groq call", incident_id=incident_id)
+            return
+
     logger.info("copilot_trigger: processing incident", incident_id=incident_id)
 
     # ------------------------------------------------------------------ #

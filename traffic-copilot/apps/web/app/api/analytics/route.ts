@@ -78,10 +78,10 @@ export async function GET() {
     // Chart data
     trafficTrend: generateTrend(),
     districtSpeeds: [
-      { district: "Central Hub", speed: Math.max(10, 34 - (avgCongestion - 50) * 0.2) | 0 },
-      { district: "Northern Gateway", speed: 52 + Math.floor(Math.random() * 4 - 2) },
-      { district: "West End Terminal", speed: Math.max(8, 28 - (avgCongestion - 50) * 0.15) | 0 },
-      { district: "South Parkway", speed: 48 + Math.floor(Math.random() * 4 - 2) },
+      { district: "CG Road", speed: Math.max(10, 34 - (avgCongestion - 50) * 0.2) | 0 },
+      { district: "SG Highway", speed: 52 + Math.floor(Math.random() * 4 - 2) },
+      { district: "Ashram Road", speed: Math.max(8, 28 - (avgCongestion - 50) * 0.15) | 0 },
+      { district: "SP Ring Road", speed: 48 + Math.floor(Math.random() * 4 - 2) },
     ],
 
     // Sensor metrics for dashboard

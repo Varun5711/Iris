@@ -58,11 +58,10 @@ function MiniChart({ data, color = "#2A6C0D" }: { data: number[]; color?: string
   );
 }
 
-const INCIDENT_MARKERS: MapMarker[] = [
-  { id: "INC-001", lat: 40.7589, lng: -73.9851, type: "incident", severity: "critical", label: "INC-001", popup: "HWY 101 North Congestion — Critical" },
-  { id: "INC-002", lat: 40.7689, lng: -73.9651, type: "incident", severity: "high", label: "INC-002", popup: "Signal Malfunction — High" },
-  { id: "CAM-042", lat: 40.7529, lng: -73.9773, type: "camera", label: "CAM-042", popup: "5th Ave & Broadway" },
-  { id: "CAM-018", lat: 40.7440, lng: -74.0021, type: "camera", label: "CAM-018", popup: "West End Terminal" },
+// Ahmedabad camera anchor points
+const CAMERA_MARKERS: MapMarker[] = [
+  { id: "CAM-AMD-01", lat: 23.0269, lng: 72.5855, type: "camera", label: "CAM-CG-01", popup: "CG Road / Swastik" },
+  { id: "CAM-AMD-02", lat: 23.0395, lng: 72.5039, type: "camera", label: "CAM-SGH-01", popup: "SG Highway" },
 ];
 
 export default function DashboardPage() {
@@ -74,6 +73,7 @@ export default function DashboardPage() {
   const [searchResults, setSearchResults] = useState<{ place_name: string; center: [number, number] }[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [activeIncidentId, setActiveIncidentId] = useState<string | null>(null);
+  const [incidentMarkers, setIncidentMarkers] = useState<MapMarker[]>([]);
 
   const load = useCallback(async () => {
     try {
@@ -83,10 +83,20 @@ export default function DashboardPage() {
     } catch {}
   }, []);
 
-  // Fetch first active incident for copilot context
+  // Fetch incidents — set copilot context + build dynamic map markers
   useEffect(() => {
-    fetch("/api/incidents").then(r => r.json()).then((incidents: { id: string }[]) => {
+    fetch("/api/incidents").then(r => r.json()).then((incidents: { id: string; lat?: number; lng?: number; severity?: string; title?: string; description?: string }[]) => {
       if (incidents?.[0]?.id) setActiveIncidentId(incidents[0].id);
+      const markers: MapMarker[] = incidents.slice(0, 10).map(inc => ({
+        id: inc.id,
+        lat: inc.lat ?? 23.0269,
+        lng: inc.lng ?? 72.5855,
+        type: "incident" as const,
+        severity: (inc.severity === "medium" ? "moderate" : inc.severity) as "critical" | "high" | "moderate" | "low" | undefined,
+        label: inc.id.slice(0, 8),
+        popup: inc.title ?? inc.description ?? "Incident",
+      }));
+      setIncidentMarkers(markers);
     }).catch(() => {});
   }, []);
 
@@ -112,11 +122,11 @@ export default function DashboardPage() {
   const speedData = analytics?.trafficTrend.map((t) => (t.count * 0.05 + 20)) ?? [30, 32, 35, 34, 36, 33, 35, 38, 35, 33, 34, 35];
   const densityData = analytics?.trafficTrend.map((t) => Math.min(100, t.count / 7)) ?? [];
 
-  // Filter markers based on settings
-  const markers: MapMarker[] = INCIDENT_MARKERS.filter((m) => {
-    if (m.type === "camera") return settings.dataSources.cctv || settings.dataSources.trafficCamera;
-    return settings.mapLayers.incidents;
-  });
+  // Combine dynamic incident markers + static camera anchors, filter by settings
+  const markers: MapMarker[] = [
+    ...(settings.mapLayers.incidents ? incidentMarkers : []),
+    ...(settings.dataSources.cctv || settings.dataSources.trafficCamera ? CAMERA_MARKERS : []),
+  ];
 
   return (
     <main className="h-screen flex flex-col overflow-hidden pt-16 bg-surface">
@@ -126,7 +136,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-lg">location_on</span>
             <div>
-              <p className="font-bold text-sm text-on-surface">Central Austin</p>
+              <p className="font-bold text-sm text-on-surface">Ahmedabad Command</p>
               <p className={`text-[10px] font-semibold ${analytics?.backendOnline ? "text-primary" : "text-on-surface-variant"}`}>
                 {analytics?.backendOnline ? "● Backend Live" : "○ Simulation Mode"} · {lastUpdated || "Loading..."}
               </p>
@@ -147,7 +157,7 @@ export default function DashboardPage() {
       <div className="flex items-center gap-8 px-6 py-2 bg-surface border-b border-outline-variant/5 shrink-0 text-xs">
         <div className="flex items-center gap-2">
           <span className="font-bold text-on-surface-variant uppercase text-[10px]">Location</span>
-          <span className="font-semibold text-on-surface">7th & Comal</span>
+          <span className="font-semibold text-on-surface">CG Road / Swastik</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="font-bold text-on-surface-variant uppercase text-[10px]">Substation</span>
@@ -155,7 +165,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <span className="font-bold text-on-surface-variant uppercase text-[10px]">OSM Graph</span>
-          <span className="font-semibold text-on-surface">Manhattan, New York</span>
+          <span className="font-semibold text-on-surface">Ahmedabad, India</span>
         </div>
       </div>
 
@@ -164,7 +174,7 @@ export default function DashboardPage() {
         <div className="flex-1 relative min-w-0">
           <MapboxMap
             ref={mapRef}
-            center={[-97.7431, 30.2672]}
+            center={[72.5855, 23.0269]}
             zoom={13}
             styleUrl="mapbox://styles/mapbox/light-v11"
             markers={markers}
@@ -254,7 +264,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-end gap-1 mt-1">
                 <span className="text-3xl font-bold text-on-surface">{analytics?.avgSpeed ?? 35}</span>
-                <span className="text-xs font-semibold text-on-surface-variant mb-1">MPH</span>
+                <span className="text-xs font-semibold text-on-surface-variant mb-1">KM/H</span>
               </div>
               <MiniChart data={speedData} color="#EAB308" />
               <div className="flex justify-between mt-1 text-[9px] font-bold text-on-surface-variant">
@@ -375,7 +385,7 @@ export default function DashboardPage() {
                 <img src="https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=600&q=80" alt="feed" className="w-full h-full object-cover opacity-90" />
                 <div className="absolute top-2 left-2 flex items-center gap-1.5">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                  <span className="text-[9px] font-bold text-white uppercase">LIVE · CAM-R42 · 7th Ave</span>
+                  <span className="text-[9px] font-bold text-white uppercase">LIVE · CAM-042 · CG Road</span>
                 </div>
               </div>
               <div className="px-3 py-2"><p className="text-[10px] font-bold text-on-surface-variant uppercase">Live Video Feed</p></div>
