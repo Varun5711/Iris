@@ -51,7 +51,7 @@ const CAMERAS: Camera[] = [
     label: "Ashram Road / RBI Junction",
     location: "Ashram Road Corridor",
     status: "recording",
-    img: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&q=80",
+    img: "cam-031.jpg",
     fps: 30,
     bitrate: "14.2 MB/s",
     detections: 22,
