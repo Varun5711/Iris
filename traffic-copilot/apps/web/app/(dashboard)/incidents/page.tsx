@@ -43,11 +43,17 @@ export default function IncidentsPage() {
   >("idle");
   const [actionMsg, setActionMsg] = useState("");
   const [backendLive, setBackendLive] = useState(false);
-  // Voice report modal
+  // Field report modal (audio + image tabs)
   const [voiceOpen, setVoiceOpen] = useState(false);
+  const [reportTab, setReportTab] = useState<"audio" | "image">("audio");
   const [voiceFile, setVoiceFile] = useState<File | null>(null);
   const [voiceLoading, setVoiceLoading] = useState(false);
   const [voiceMsg, setVoiceMsg] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [imageLoading, setImageLoading] = useState(false);
+  const [imageMsg, setImageMsg] = useState("");
+  const [imageDragOver, setImageDragOver] = useState(false);
   const [allIncidents, setAllIncidents] = useState<Incident[]>([]);
   const [mapReady, setMapReady] = useState(false);
   const [dataLoading, setDataLoading] = useState(false);
@@ -120,7 +126,12 @@ export default function IncidentsPage() {
         const recs: BackendRecommendation[] = await recRes.json();
         setRecommendations(recs);
         setBackendLive(true);
-        const first = recs.find((r) => r.copilot_response) ?? recs[0];
+        // Prefer composite rec (has signal_actions + diversion_plan), fall back to any with copilot_response
+        const first =
+          recs.find((r) => r.rec_type === "composite" && r.copilot_response) ??
+          recs.find((r) => r.copilot_response?.signal_actions?.length) ??
+          recs.find((r) => r.copilot_response) ??
+          recs[0];
         if (first?.copilot_response) setCopilot(first.copilot_response);
       }
     } catch {}
@@ -317,6 +328,7 @@ export default function IncidentsPage() {
       "diversion-route-0",
       settings.mapLayers.diversionRoutes,
     );
+    map.setLayerVisibility("affected-segments", settings.mapLayers.affectedSegments);
     map.setLayerVisibility("signal-circles", settings.mapLayers.signals);
   }, [settings.mapLayers]);
 
@@ -410,6 +422,47 @@ export default function IncidentsPage() {
     } finally {
       setVoiceLoading(false);
     }
+  };
+
+  // Image report submission — POST /incidents/{id}/vision
+  const submitImageReport = async () => {
+    if (!imageFile || !incident) return;
+    setImageLoading(true);
+    setImageMsg("");
+    try {
+      const fd = new FormData();
+      fd.append("image", imageFile);
+      fd.append("officer_id", "officer-web");
+      const res = await fetch(`${BACKEND}/incidents/${incident.id}/vision`, {
+        method: "POST",
+        body: fd,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail ?? `HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      const label = data.top_label ?? "unknown";
+      const conf = data.confidence != null
+        ? ` (${Math.round(data.confidence * 100)}% confidence)`
+        : "";
+      const detected = data.incident_detected ? "incident detected" : "no incident detected";
+      setImageMsg(`✓ Vision analysis complete — ${label}${conf} · ${detected}`);
+      setImageFile(null);
+      setImagePreview(null);
+    } catch (err) {
+      setImageMsg(`Failed: ${String(err)}`);
+    } finally {
+      setImageLoading(false);
+    }
+  };
+
+  // Image file picker helper
+  const handleImageFile = (file: File) => {
+    setImageFile(file);
+    const reader = new FileReader();
+    reader.onload = (e) => setImagePreview(e.target?.result as string);
+    reader.readAsDataURL(file);
   };
 
   // Switch active incident — clears all state so new incident loads fresh
@@ -543,50 +596,145 @@ export default function IncidentsPage() {
 
       {/* ── RIGHT: Incident Detail ── */}
       <div className="flex-1 overflow-y-auto p-8 pb-12">
-        {/* Voice Report Modal */}
+        {/* Field Report Modal */}
         {voiceOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md">
-              <h2 className="text-lg font-bold text-on-surface mb-2">
-                Voice Incident Report
+              <h2 className="text-lg font-bold text-on-surface mb-1">
+                Field Incident Report
               </h2>
-              <p className="text-xs text-on-surface-variant mb-6">
-                Upload an audio recording (mp3/wav/mp4/ogg). AssemblyAI
-                transcribes it, Groq extracts incident details, and an incident
-                is created automatically.
+              <p className="text-xs text-on-surface-variant mb-5">
+                Submit an audio recording or photo from the field. AI will extract incident details automatically.
               </p>
-              <input
-                type="file"
-                accept="audio/*,video/mp4"
-                onChange={(e) => setVoiceFile(e.target.files?.[0] ?? null)}
-                className="w-full text-sm text-on-surface-variant mb-4 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary"
-              />
-              {voiceMsg && (
-                <p
-                  className={`text-xs mb-4 font-medium ${voiceMsg.startsWith("✓") ? "text-primary" : "text-error"}`}
-                >
-                  {voiceMsg}
-                </p>
-              )}
-              <div className="flex gap-3">
+
+              {/* Tabs */}
+              <div className="flex gap-1 mb-6 bg-surface-container rounded-xl p-1">
                 <button
-                  onClick={() => {
-                    setVoiceOpen(false);
-                    setVoiceMsg("");
-                    setVoiceFile(null);
-                  }}
-                  className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface"
+                  onClick={() => setReportTab("audio")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${reportTab === "audio" ? "bg-white shadow text-primary" : "text-on-surface-variant hover:text-on-surface"}`}
                 >
-                  Cancel
+                  <span className="material-symbols-outlined text-[15px]">mic</span>
+                  Audio
                 </button>
                 <button
-                  onClick={submitVoiceReport}
-                  disabled={!voiceFile || voiceLoading}
-                  className="flex-1 py-2.5 rounded-full signature-gradient text-white text-sm font-bold disabled:opacity-50"
+                  onClick={() => setReportTab("image")}
+                  className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-semibold transition-all ${reportTab === "image" ? "bg-white shadow text-primary" : "text-on-surface-variant hover:text-on-surface"}`}
                 >
-                  {voiceLoading ? "Processing…" : "Submit Report"}
+                  <span className="material-symbols-outlined text-[15px]">add_a_photo</span>
+                  Photo
                 </button>
               </div>
+
+              {/* Audio tab */}
+              {reportTab === "audio" && (
+                <>
+                  <p className="text-xs text-on-surface-variant mb-3">
+                    Upload an audio recording (mp3 / wav / mp4 / ogg). AssemblyAI transcribes it and Groq extracts incident details.
+                  </p>
+                  <input
+                    type="file"
+                    accept="audio/*,video/mp4"
+                    onChange={(e) => setVoiceFile(e.target.files?.[0] ?? null)}
+                    className="w-full text-sm text-on-surface-variant mb-4 file:mr-3 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary/10 file:text-primary"
+                  />
+                  {voiceMsg && (
+                    <p className={`text-xs mb-4 font-medium ${voiceMsg.startsWith("✓") ? "text-primary" : "text-error"}`}>
+                      {voiceMsg}
+                    </p>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setVoiceOpen(false); setVoiceMsg(""); setVoiceFile(null); }}
+                      className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitVoiceReport}
+                      disabled={!voiceFile || voiceLoading}
+                      className="flex-1 py-2.5 rounded-full signature-gradient text-white text-sm font-bold disabled:opacity-50"
+                    >
+                      {voiceLoading ? "Processing…" : "Submit Report"}
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Image tab */}
+              {reportTab === "image" && (
+                <>
+                  {/* Drag & drop zone */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setImageDragOver(true); }}
+                    onDragLeave={() => setImageDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setImageDragOver(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith("image/")) handleImageFile(file);
+                    }}
+                    onClick={() => document.getElementById("image-file-input")?.click()}
+                    className={`relative w-full h-40 rounded-xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all mb-4 ${imageDragOver ? "border-primary bg-primary/5" : "border-outline-variant hover:border-primary/50 hover:bg-surface-container-low"}`}
+                  >
+                    {imagePreview ? (
+                      <>
+                        <img src={imagePreview} alt="Preview" className="absolute inset-0 w-full h-full object-cover rounded-xl opacity-80" />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setImageFile(null); setImagePreview(null); }}
+                          className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black/80 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[13px]">close</span>
+                        </button>
+                        <div className="relative z-10 bg-black/50 text-white text-xs px-3 py-1 rounded-full">
+                          {imageFile?.name}
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-[32px] text-on-surface-variant mb-2">add_a_photo</span>
+                        <p className="text-xs text-on-surface-variant font-medium">Drop an image or click to browse</p>
+                        <p className="text-[10px] text-on-surface-variant/60 mt-0.5">JPG, PNG, WEBP</p>
+                      </>
+                    )}
+                  </div>
+                  <input
+                    id="image-file-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+                  />
+
+                  {/* ViT info badge */}
+                  <div className="flex items-center gap-2 mb-4 px-3 py-2 bg-surface-container rounded-lg">
+                    <span className="material-symbols-outlined text-[14px] text-primary">psychology</span>
+                    <p className="text-[10px] text-on-surface-variant leading-snug">
+                      Analyzed by <span className="font-semibold text-on-surface">HuggingFace ViT</span> — classifies the scene and attaches vision context to the active incident.
+                    </p>
+                  </div>
+
+                  {imageMsg && (
+                    <p className={`text-xs mb-4 font-medium ${imageMsg.startsWith("✓") ? "text-primary" : "text-error"}`}>
+                      {imageMsg}
+                    </p>
+                  )}
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setVoiceOpen(false); setImageMsg(""); setImageFile(null); setImagePreview(null); }}
+                      className="flex-1 py-2.5 rounded-full border border-outline-variant text-sm font-semibold text-on-surface"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={submitImageReport}
+                      disabled={!imageFile || imageLoading || !incident}
+                      className="flex-1 py-2.5 rounded-full signature-gradient text-white text-sm font-bold disabled:opacity-50"
+                    >
+                      {imageLoading ? "Analyzing…" : "Submit Photo"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )}
@@ -652,11 +800,11 @@ export default function IncidentsPage() {
           </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setVoiceOpen(true)}
+              onClick={() => { setVoiceOpen(true); setReportTab("audio"); setVoiceMsg(""); setImageMsg(""); }}
               className="px-5 py-2.5 rounded-full font-bold text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-colors flex items-center gap-2"
             >
-              <span className="material-symbols-outlined text-sm">mic</span>
-              Voice Report
+              <span className="material-symbols-outlined text-sm">add_a_photo</span>
+              Field Report
             </button>
             <button className="px-6 py-2.5 rounded-full font-bold text-sm text-primary hover:bg-primary/5 transition-colors">
               Export Report

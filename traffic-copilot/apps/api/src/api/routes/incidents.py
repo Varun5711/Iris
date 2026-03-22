@@ -1017,6 +1017,38 @@ async def get_map_data(
                 },
             })
 
+    # ---- 2b. Synthetic affected segment fallback ----------------------------
+    # When no rows exist in affected_segments (incident created via voice/image/
+    # direct API without segment tagging), synthesise a short ~200 m LineString
+    # through the incident point so the map always shows an orange blocked zone.
+    has_real_affected = any(
+        f.get("properties", {}).get("feature_type") == "affected_segment"
+        and f.get("geometry") is not None
+        for f in features
+    )
+    if not has_real_affected and inc_lat and inc_lon:
+        # ±0.0009° ≈ ±100 m — draws a short horizontal bar through the incident
+        HALF_DEG = 0.0009
+        features.append({
+            "type": "Feature",
+            "geometry": {
+                "type": "LineString",
+                "coordinates": [
+                    [inc_lon - HALF_DEG, inc_lat],
+                    [inc_lon,            inc_lat],
+                    [inc_lon + HALF_DEG, inc_lat],
+                ],
+            },
+            "properties": {
+                "feature_type": "affected_segment",
+                "road_name": inc.get("corridor_id", "Blocked Zone"),
+                "congestion_pct": 100,
+                "note": "synthetic — no segment data in DB",
+                "stroke_color": "#ff6600",
+                "stroke_width": 5,
+            },
+        })
+
     # ---- 3. Diversion route -------------------------------------------------
     diversion_added = False
 
